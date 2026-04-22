@@ -43,27 +43,29 @@ service cloud.firestore {
         && data.keys().size() == 5
         && data.userId == userId
         && data.content is string && data.content.size() <= 2000
-        && data.type is string && data.type in ['preference', 'fact', 'summary']
+        && data.type is string && data.type in ['preference', 'fact', 'summary', 'email', 'whatsapp']
         && data.createdAt == request.time
         && data.updatedAt == request.time;
     }
     
     function isValidMemoryUpdate(data, userId) {
       return data.content is string && data.content.size() <= 2000
-        && data.type is string && data.type in ['preference', 'fact', 'summary']
+        && data.type is string && data.type in ['preference', 'fact', 'summary', 'email', 'whatsapp']
         && data.updatedAt == request.time
         && data.userId == existing().userId
         && data.createdAt == existing().createdAt;
     }
 
     function isValidFileCreate(data, userId) {
-      return data.keys().hasAll(['userId', 'filename', 'mimeType', 'size', 'storageUrl', 'createdAt'])
-        && data.keys().size() == 6
+      return data.keys().hasAll(['userId', 'filename', 'mimeType', 'size', 'storageUrl', 'createdAt', 'status', 'type'])
+        && data.keys().size() == 8
         && data.userId == userId
         && data.filename is string && data.filename.size() <= 250
         && data.mimeType is string && data.mimeType.size() <= 100
         && data.size is number
         && data.storageUrl is string && data.storageUrl.size() <= 1000
+        && data.status is string && data.status in ['indexed', 'processing', 'failed']
+        && data.type is string && data.type.size() <= 20
         && data.createdAt == request.time;
     }
 

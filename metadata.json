@@ -1,6 +1,6 @@
 {
-  "name": "Remix: Remix: Beatrice",
-  "description": "Luxury private executive voice assistant",
+  "name": "Beatrice",
+  "description": "Luxury private executive voice assistant with real-time AI and Multimodal Live APIs",
   "requestFramePermissions": [
     "microphone"
   ],

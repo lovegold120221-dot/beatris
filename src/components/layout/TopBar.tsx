@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Languages, Wifi, Mic } from 'lucide-react';
+import { Languages, Wifi, Mic, LogOut, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { auth } from '../../lib/firebase';
+import { signOut } from 'firebase/auth';
 
 export default function TopBar() {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [language, setLanguage] = useState('FR');
   const userLanguages = [
     { code: 'FR', label: 'French (Executive Mode)' },
@@ -11,6 +14,10 @@ export default function TopBar() {
     { code: 'NL', label: 'Dutch/Flemish' },
     { code: 'TL', label: 'Tagalog' },
   ];
+
+  const handleLogout = () => {
+    signOut(auth);
+  };
 
   return (
     <div className="pt-8 px-6 pb-4 flex justify-between items-center bg-gradient-to-b from-black to-transparent z-10 w-full relative">
@@ -27,7 +34,10 @@ export default function TopBar() {
         
         <div className="relative">
           <button 
-            onClick={() => setLangMenuOpen(!langMenuOpen)}
+            onClick={() => {
+              setLangMenuOpen(!langMenuOpen);
+              setProfileOpen(false);
+            }}
             className="bg-[#D4AF37] text-black px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tighter hover:bg-[#D4AF37]/90 transition-colors"
           >
             {language}
@@ -54,13 +64,54 @@ export default function TopBar() {
                 {userLanguages.map(lang => (
                   <button
                     key={lang.code}
-                    onClick={() => setLanguage(lang.code)}
+                    onClick={() => {
+                      setLanguage(lang.code);
+                      setLangMenuOpen(false);
+                    }}
                     className={`px-2 py-1.5 text-xs rounded-md text-left transition-colors flex items-center justify-between ${language === lang.code ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
                   >
                     <span>{lang.label}</span>
                     <span className="text-[9px] uppercase tracking-wider">{lang.code}</span>
                   </button>
                 ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="relative">
+          <button 
+            onClick={() => {
+              setProfileOpen(!profileOpen);
+              setLangMenuOpen(false);
+            }}
+            className="w-8 h-8 rounded-full glass-panel flex items-center justify-center text-white/70 hover:text-white transition-colors border-white/10"
+          >
+            {auth.currentUser?.photoURL ? (
+              <img src={auth.currentUser.photoURL} alt="User" className="w-full h-full rounded-full" />
+            ) : (
+              <User size={14} />
+            )}
+          </button>
+
+          <AnimatePresence>
+            {profileOpen && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                className="absolute top-full right-0 mt-2 w-48 glass-panel-heavy rounded-2xl p-2 shadow-2xl flex flex-col gap-1 border border-white/20 origin-top-right z-50 overflow-hidden"
+              >
+                <div className="px-3 py-2 border-b border-white/5 mb-1">
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest truncate">{auth.currentUser?.email}</p>
+                </div>
+                <button 
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 px-3 py-2 text-xs text-rose-400 hover:bg-rose-400/10 rounded-xl transition-colors"
+                >
+                  <LogOut size={14} />
+                  <span>Logout</span>
+                </button>
               </motion.div>
             )}
           </AnimatePresence>

@@ -27,17 +27,13 @@ export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
 // Scopes for Google Services Integration
-// NOTE: Requesting highly sensitive scopes like full Gmail or Drive access will
-// IMMEDIATELY cause an 'auth/internal-error' if they have not been explicitly 
-// added to your Google Cloud Console OAuth Consent screen. 
-// We have temporarily disabled them to allow you to log in. 
-// googleProvider.addScope('https://mail.google.com/'); 
-// googleProvider.addScope('https://www.googleapis.com/auth/drive'); 
-// googleProvider.addScope('https://www.googleapis.com/auth/documents'); 
-// googleProvider.addScope('https://www.googleapis.com/auth/spreadsheets'); 
-// googleProvider.addScope('https://www.googleapis.com/auth/presentations'); 
-// googleProvider.addScope('https://www.googleapis.com/auth/calendar'); 
-// googleProvider.addScope('https://www.googleapis.com/auth/contacts');
+googleProvider.addScope('https://www.googleapis.com/auth/gmail.readonly'); 
+googleProvider.addScope('https://www.googleapis.com/auth/drive.readonly'); 
+googleProvider.addScope('https://www.googleapis.com/auth/documents.readonly'); 
+googleProvider.addScope('https://www.googleapis.com/auth/calendar.readonly'); 
+googleProvider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+googleProvider.addScope('https://www.googleapis.com/auth/userinfo.email');
+googleProvider.addScope('https://www.googleapis.com/auth/userinfo.profile');
 
 export interface FirestoreErrorInfo {
   error: string;

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
+import { GoogleService } from '../services/googleService';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -171,10 +172,11 @@ Knowledge injection: The current date is ${dateString}. The time is ${timeString
 Current Interaction Context: [**${contextString}**]. Please tailor your responses heavily to this context context.
 Start by speaking English. As he speaks, automatically adapt to his language.
 Maintain an elegant and highly competent chief of staff persona. Answer concisely.
+You have tools to access Jo's real Gmail, Calendar, and Drive. use them proactively to help him.
 When you speak, also call the report_language function to report the detected input language, your output language, and your confidence level about the input language.`;
 
       sessionPromiseRef.current = ai.live.connect({
-        model: "gemini-3.1-flash-live-preview",
+        model: "gemini-2.0-flash-exp",
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
@@ -184,19 +186,36 @@ When you speak, also call the report_language function to report the detected in
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           tools: [{
-            functionDeclarations: [{
-              name: 'report_language',
-              description: 'Report the detected spoken language to the UI.',
-              parameters: {
-                type: Type.OBJECT,
-                properties: {
-                  inputLanguage: { type: Type.STRING, description: 'The detected language of the user input' },
-                  outputLanguage: { type: Type.STRING, description: 'The language you are responding in' },
-                  confidence: { type: Type.STRING, description: 'Confidence level like High, Medium, Low' }
-                },
-                required: ['inputLanguage', 'outputLanguage', 'confidence']
+            functionDeclarations: [
+              {
+                name: 'report_language',
+                description: 'Report the detected spoken language to the UI.',
+                parameters: {
+                  type: Type.OBJECT,
+                  properties: {
+                    inputLanguage: { type: Type.STRING, description: 'The detected language of the user input' },
+                    outputLanguage: { type: Type.STRING, description: 'The language you are responding in' },
+                    confidence: { type: Type.STRING, description: 'Confidence level like High, Medium, Low' }
+                  },
+                  required: ['inputLanguage', 'outputLanguage', 'confidence']
+                }
+              },
+              {
+                name: 'list_recent_emails',
+                description: 'List the 5 most recent emails from Gmail.',
+                parameters: { type: Type.OBJECT, properties: {} }
+              },
+              {
+                name: 'list_calendar_events',
+                description: 'List upcoming calendar events for today.',
+                parameters: { type: Type.OBJECT, properties: {} }
+              },
+              {
+                name: 'list_drive_files',
+                description: 'List recent files from Google Drive.',
+                parameters: { type: Type.OBJECT, properties: {} }
               }
-            }]
+            ]
           }]
         },
         callbacks: {
@@ -233,29 +252,36 @@ When you speak, also call the report_language function to report the detected in
                 }
                 if (part.functionCall) {
                   const call = part.functionCall;
-                  if (call.name === 'report_language') {
-                    const args = call.args as any;
-                    setDetectedLanguage({
-                      input: args.inputLanguage,
-                      output: args.outputLanguage,
-                      confidence: args.confidence
-                    });
-                    
-                    // Reply to the tool call
-                    sessionPromiseRef.current?.then((session: any) => {
-                      session.sendToolResponse({
-                        functionResponses: [{ id: call.id, name: call.name, response: { success: true } }]
+                  
+                  let result: any = { success: true };
+                  try {
+                    if (call.name === 'report_language') {
+                      const args = call.args as any;
+                      setDetectedLanguage({
+                        input: args.inputLanguage,
+                        output: args.outputLanguage,
+                        confidence: args.confidence
                       });
-                    });
+                    } else if (call.name === 'list_recent_emails') {
+                      result = await GoogleService.listEmails(5);
+                    } else if (call.name === 'list_calendar_events') {
+                      result = await GoogleService.listEvents(5);
+                    } else if (call.name === 'list_drive_files') {
+                      result = await GoogleService.listFiles(5);
+                    }
+                  } catch (err) {
+                    console.error(`Tool call error (${call.name}):`, err);
+                    result = { error: String(err) };
                   }
+                  
+                  // Reply to the tool call
+                  sessionPromiseRef.current?.then((session: any) => {
+                    session.sendToolResponse({
+                      functionResponses: [{ id: call.id, name: call.name, response: result }]
+                    });
+                  });
                 }
               }
-            }
-
-            // Handle transcription
-            if ((message as any).serverContent?.modelTurn?.parts) {
-               // We only have the modelTurn audio, transcription might arrive in different events.
-               // We will wait for the documentation matching structure or parse text parts.
             }
           },
           onerror: (err: any) => {

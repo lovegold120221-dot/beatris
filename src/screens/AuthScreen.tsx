@@ -28,7 +28,7 @@ export default function AuthScreen() {
       console.error(err);
       
       if (err.message?.includes('auth/unauthorized-domain')) {
-         setError('ACTION REQUIRED: You must add this URL to your Firebase Authorized Domains.\n\nContext:\n1. Go to Firebase Console -> Authentication -> Settings -> Authorized Domains\n2. Add this exact domain: ais-dev-uq4u5vgfptdf4prhjk3c4k-56203130379.asia-east1.run.app');
+         setError(`ACTION REQUIRED: You must add this URL to your Firebase Authorized Domains.\n\nContext:\n1. Go to Firebase Console -> Authentication -> Settings -> Authorized Domains\n2. Add this exact domain: ${window.location.hostname}`);
       } else if (err.message?.includes('auth/internal-error')) {
          setError('INTERNAL ERROR:\nThis is usually caused by requesting OAuth scopes (like Gmail or Drive) that are not enabled in your Google Cloud Consent Screen. I have temporarily disabled them so you can log in!');
       } else {
