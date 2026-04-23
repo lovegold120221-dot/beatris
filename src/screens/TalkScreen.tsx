@@ -156,82 +156,86 @@ export default function TalkScreen() {
           )}
         </AnimatePresence>
 
-        {/* Voice Orb Area (Sleek Theme) */}
-        <div className="relative flex flex-col items-center justify-center py-8 flex-1">
-          <div className="absolute w-64 h-64 bg-[#D4AF37]/5 rounded-full blur-[60px]"></div>
-          
-          <button 
-            onClick={handleOrbClick} 
-            className={`w-48 h-48 rounded-full border border-white/10 flex items-center justify-center shadow-inner relative focus:outline-none transition-colors duration-500 ${connected ? 'bg-gradient-to-tr from-[#D4AF37]/20 via-black to-[#1a1a1a]' : 'bg-gradient-to-tr from-black via-black to-[#1a1a1a]'}`}
-          >
-            <div className={`w-40 h-40 rounded-full bg-gradient-to-br from-[#D4AF37]/40 via-black to-transparent p-[1px] flex items-center justify-center ${connected ? 'shadow-[0_0_80px_rgba(212,175,55,0.3)]' : 'shadow-[0_0_30px_rgba(212,175,55,0.1)]'} transition-shadow duration-500`}>
-              <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden relative">
-                 <div className="w-32 h-32 flex items-center justify-center" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)' }}>
-                   <motion.div 
-                     animate={{ 
-                       rotate: orbState === 'listening' ? 360 : orbState === 'speaking' ? -360 : 0,
-                       scale: orbState === 'speaking' ? [1, 1.15, 1, 1.05, 1] : orbState === 'listening' ? [1, 1.05, 1] : 1
-                     }}
-                     transition={{ repeat: Infinity, duration: orbState === 'speaking' ? 1.5 : 4, ease: "easeInOut" }}
-                     className={`w-12 h-12 rounded-full border-2 ${orbState === 'idle' ? 'border-[#D4AF37]/40' : 'border-[#D4AF37]'} border-t-transparent opacity-60`}
-                   />
-                 </div>
-              </div>
-            </div>
+        {/* Interactive Layout Area */}
+        <div className="flex-1 flex flex-col relative min-h-0">
+          {/* Voice Orb Area (Sleek Theme) */}
+          <motion.div layout className={`relative flex flex-col items-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${transcript.length > 0 ? 'justify-start pt-2 pb-4 shrink-0 scale-90' : 'justify-center py-8 flex-1 scale-100'}`}>
+            <div className="absolute w-64 h-64 bg-[#D4AF37]/5 rounded-full blur-[60px] pointer-events-none"></div>
             
-            {!connected && (
-              <div className="absolute bottom-6 flex flex-col items-center gap-1 opacity-60">
-                 <Mic size={14} className="text-[#D4AF37]" />
-                 <span className="text-[8px] uppercase tracking-widest text-[#D4AF37]">Tap to Connect</span>
+            <button 
+              onClick={handleOrbClick} 
+              className={`w-48 h-48 rounded-full border border-white/10 flex items-center justify-center shadow-inner relative focus:outline-none transition-colors duration-500 ${connected ? 'bg-gradient-to-tr from-[#D4AF37]/20 via-black to-[#1a1a1a]' : 'bg-gradient-to-tr from-black via-black to-[#1a1a1a]'}`}
+            >
+              <div className={`w-40 h-40 rounded-full bg-gradient-to-br from-[#D4AF37]/40 via-black to-transparent p-[1px] flex items-center justify-center ${connected ? 'shadow-[0_0_80px_rgba(212,175,55,0.3)]' : 'shadow-[0_0_30px_rgba(212,175,55,0.1)]'} transition-shadow duration-500`}>
+                <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden relative">
+                   <div className="w-32 h-32 flex items-center justify-center" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)' }}>
+                     <motion.div 
+                       animate={{ 
+                         rotate: orbState === 'listening' ? 360 : orbState === 'speaking' ? -360 : 0,
+                         scale: orbState === 'speaking' ? [1, 1.15, 1, 1.05, 1] : orbState === 'listening' ? [1, 1.05, 1] : 1
+                       }}
+                       transition={{ repeat: Infinity, duration: orbState === 'speaking' ? 1.5 : 4, ease: "easeInOut" }}
+                       className={`w-12 h-12 rounded-full border-2 ${orbState === 'idle' ? 'border-[#D4AF37]/40' : 'border-[#D4AF37]'} border-t-transparent opacity-60`}
+                     />
+                   </div>
+                </div>
               </div>
-            )}
-          </button>
+              
+              {!connected && (
+                <div className="absolute bottom-6 flex flex-col items-center gap-1 opacity-60">
+                   <Mic size={14} className="text-[#D4AF37]" />
+                   <span className="text-[8px] uppercase tracking-widest text-[#D4AF37]">Tap to Connect</span>
+                </div>
+              )}
+            </button>
 
-          <div className="mt-8 flex flex-col items-center h-12">
-            <span className="text-[10px] uppercase tracking-[0.3em] text-[#D4AF37] mb-2 font-medium">
-              {orbState === 'idle' && 'Offline'}
-              {orbState === 'listening' && 'Listening...'}
-              {orbState === 'speaking' && 'Beatrice Speaking'}
-            </span>
-            {orbState !== 'idle' && (
-              <div className="flex gap-1.5">
-                <motion.div animate={{ height: orbState === 'speaking' ? [4, 12, 4] : [4, 6, 4] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0 }} className="w-1 h-4 rounded-full bg-[#D4AF37]"></motion.div>
-                <motion.div animate={{ height: orbState === 'speaking' ? [4, 16, 4] : [4, 8, 4] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.2 }} className="w-1 h-4 rounded-full bg-[#D4AF37]"></motion.div>
-                <motion.div animate={{ height: orbState === 'speaking' ? [4, 12, 4] : [4, 6, 4] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.4 }} className="w-1 h-4 rounded-full bg-[#D4AF37]"></motion.div>
-              </div>
-            )}
-          </div>
-        </div>
+            <motion.div layout className="mt-6 flex flex-col items-center h-12">
+              <span className="text-[10px] uppercase tracking-[0.3em] text-[#D4AF37] mb-2 font-medium">
+                {orbState === 'idle' && 'Offline'}
+                {orbState === 'listening' && 'Listening...'}
+                {orbState === 'speaking' && 'Beatrice Speaking'}
+              </span>
+              {orbState !== 'idle' && (
+                <div className="flex gap-1.5">
+                  <motion.div animate={{ height: orbState === 'speaking' ? [4, 12, 4] : [4, 6, 4] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0 }} className="w-1 h-4 rounded-full bg-[#D4AF37]"></motion.div>
+                  <motion.div animate={{ height: orbState === 'speaking' ? [4, 16, 4] : [4, 8, 4] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.2 }} className="w-1 h-4 rounded-full bg-[#D4AF37]"></motion.div>
+                  <motion.div animate={{ height: orbState === 'speaking' ? [4, 12, 4] : [4, 6, 4] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.4 }} className="w-1 h-4 rounded-full bg-[#D4AF37]"></motion.div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
 
-        {/* Live Transcription Area */}
-        <div className="px-6 mb-4 flex-1 flex flex-col justify-end">
-          <div className="flex flex-col gap-2 max-h-32 overflow-y-auto hide-scrollbar mask-image-fade-top">
-            <AnimatePresence>
-              {transcript.map((t, i) => (
-                <motion.div 
-                  key={i}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`flex flex-col ${t.role === 'beatrice' ? 'items-start' : 'items-end'}`}
-                >
-                  <span className={`text-[9px] uppercase tracking-wider mb-0.5 ${t.role === 'beatrice' ? 'text-[#D4AF37]' : 'text-blue-400'}`}>
-                    {t.role === 'beatrice' ? 'Beatrice' : 'You'}
-                  </span>
-                  <div className={`text-xs px-3 py-2 rounded-2xl max-w-[85%] ${
-                    t.role === 'beatrice' 
-                      ? 'bg-[#D4AF37]/10 text-white/90 rounded-tl-sm border border-[#D4AF37]/20' 
-                      : 'bg-blue-500/10 text-white/90 rounded-tr-sm border border-blue-500/20'
-                  }`}>
-                    {t.text}
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
+          {/* Live Transcription Area */}
+          <motion.div layout className="px-6 mb-4 flex-1 flex flex-col justify-end min-h-[4rem] relative z-10 pointer-events-none">
+            <div className="flex flex-col gap-2 max-h-36 overflow-y-auto hide-scrollbar mask-image-fade-top pointer-events-auto">
+              <AnimatePresence initial={false}>
+                {transcript.map((t, i) => (
+                  <motion.div 
+                    layout
+                    key={`${i}-${t.time}`}
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className={`flex flex-col ${t.role === 'beatrice' ? 'items-start' : 'items-end'}`}
+                  >
+                    <span className={`text-[9px] uppercase tracking-wider mb-0.5 ${t.role === 'beatrice' ? 'text-[#D4AF37]' : 'text-blue-400'}`}>
+                      {t.role === 'beatrice' ? 'Beatrice' : 'You'}
+                    </span>
+                    <div className={`text-xs px-3 py-2 max-w-[85%] shadow-sm ${
+                      t.role === 'beatrice' 
+                        ? 'bg-[#D4AF37]/10 text-white/90 rounded-2xl rounded-tl-sm border border-[#D4AF37]/20 backdrop-blur-sm' 
+                        : 'bg-blue-500/10 text-white/90 rounded-2xl rounded-tr-sm border border-blue-500/20 backdrop-blur-sm'
+                    }`}>
+                      {t.text}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </motion.div>
         </div>
 
         {/* Enhanced Context Panel */}
-        <div className="mb-6 mx-6 bg-white/5 backdrop-blur-xl border border-[#D4AF37]/20 rounded-2xl p-4 space-y-3 relative overflow-hidden">
+        <motion.div layout className="mb-6 mx-6 bg-white/5 backdrop-blur-xl border border-[#D4AF37]/20 rounded-2xl p-4 space-y-3 relative overflow-hidden shrink-0">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#D4AF37]/5 rounded-full blur-2xl"></div>
           <div className="flex justify-between items-center border-b border-white/5 pb-2 relative z-10">
             <span className="text-[10px] uppercase tracking-wider text-white/50 font-bold flex items-center gap-2">
@@ -257,7 +261,7 @@ export default function TalkScreen() {
               <span className="text-[10px] font-medium text-white/80">WhatsApp</span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
       </div>
     </div>

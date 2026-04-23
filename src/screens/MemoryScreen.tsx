@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, MessageCircle, AlertCircle, CheckCircle2, BrainCircuit, Loader2 } from 'lucide-react';
+import { Mail, MessageCircle, AlertCircle, CheckCircle2, BrainCircuit, Loader2, Scissors } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { GoogleService } from '../services/googleService';
@@ -7,7 +7,7 @@ import { GoogleService } from '../services/googleService';
 interface Memory {
   id: string;
   content: string;
-  type: 'preference' | 'fact' | 'summary' | 'email' | 'whatsapp';
+  type: 'preference' | 'fact' | 'summary' | 'email' | 'whatsapp' | 'snippet';
   createdAt: any;
   from?: string;
   subject?: string;
@@ -79,6 +79,7 @@ export default function MemoryScreen() {
       case 'email': return <Mail size={12} className="text-[#D4AF37]" />;
       case 'whatsapp': return <MessageCircle size={12} className="text-[#D4AF37]" />;
       case 'summary': return <BrainCircuit size={12} className="text-[#D4AF37]" />;
+      case 'snippet': return <Scissors size={12} className="text-[#D4AF37]" />;
       default: return <AlertCircle size={12} className="text-[#D4AF37]" />;
     }
   };
@@ -117,7 +118,7 @@ export default function MemoryScreen() {
               <div className="flex items-center gap-2 mb-1">
                 {getIcon(memory.type)}
                 <h3 className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-medium">
-                  {memory.type === 'email' ? 'Inbox Synthesis' : memory.type === 'whatsapp' ? 'WhatsApp Sync' : 'Memory Entry'}
+                  {memory.type === 'email' ? 'Inbox Synthesis' : memory.type === 'whatsapp' ? 'WhatsApp Sync' : memory.type === 'snippet' ? 'Document Snippet' : 'Memory Entry'}
                 </h3>
               </div>
               

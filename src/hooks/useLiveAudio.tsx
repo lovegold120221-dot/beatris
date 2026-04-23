@@ -236,9 +236,10 @@ When you speak, also call the report_language function to report the detected in
                if (sessionPromiseRef.current) {
                  const base64 = arrayBufferToBase64(e.data);
                  sessionPromiseRef.current.then((session: any) => {
-                   session.sendRealtimeInput({
-                     audio: { data: base64, mimeType: 'audio/pcm;rate=16000' }
-                   });
+                   session.sendRealtimeInput([{
+                     mimeType: 'audio/pcm;rate=16000',
+                     data: base64
+                   }]);
                  }).catch(console.error);
                }
              };
