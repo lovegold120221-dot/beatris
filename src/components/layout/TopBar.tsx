@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Languages, Wifi, Mic, LogOut, User } from 'lucide-react';
+import { Languages, Wifi, Mic, LogOut, User, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../../lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -125,6 +125,16 @@ export default function TopBar() {
                     {auth.currentUser?.email}
                   </p>
                 </div>
+                <button 
+                  onClick={() => {
+                    localStorage.removeItem('beatrice_seen_about');
+                    window.location.reload();
+                  }}
+                  className="flex items-center gap-3 px-3 py-2 text-xs text-white/70 hover:bg-white/5 rounded-xl transition-colors"
+                >
+                  <Sparkles size={14} className="text-[#D4AF37]" />
+                  <span>Our Vision</span>
+                </button>
                 <button 
                   onClick={handleLogout}
                   className="flex items-center gap-3 px-3 py-2 text-xs text-rose-400 hover:bg-rose-400/10 rounded-xl transition-colors"

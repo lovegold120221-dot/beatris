@@ -18,7 +18,17 @@ export default function TalkScreen() {
   } = useTalk();
   const [orbState, setOrbState] = useState<'idle' | 'listening' | 'speaking'>('idle');
   const [showMicPrompt, setShowMicPrompt] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Only show about on first load if not seen
+    const hasSeenAbout = localStorage.getItem('beatrice_seen_about');
+    if (!hasSeenAbout) {
+      setShowAbout(true);
+      localStorage.setItem('beatrice_seen_about', 'true');
+    }
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -91,6 +101,47 @@ export default function TalkScreen() {
                   Allow
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showAbout && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="glass-panel-heavy rounded-3xl p-8 max-w-sm w-full border border-[#D4AF37]/30 shadow-2xl flex flex-col gap-4 relative overflow-hidden text-center"
+            >
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37]/30 to-transparent flex items-center justify-center text-[#D4AF37] mx-auto mb-2 border border-[#D4AF37]/20">
+                <Sparkles size={32} />
+              </div>
+              <h3 className="font-serif text-3xl text-white/90">The Beatrice Vision</h3>
+              <p className="text-sm font-light leading-relaxed text-white/70 font-serif italic mb-2">
+                "Voice interaction that feels effortless, premium, and powerful enough for serious daily use."
+              </p>
+              <div className="text-[11px] leading-relaxed text-white/50 text-left space-y-3 font-light tracking-wide border-t border-white/10 pt-4">
+                <p>
+                  Beatrice is built as a highly natural, multilingual voice assistant that converses like a human, not a stiff AI. 
+                  She is designed to understand context and respond with nuance.
+                </p>
+                <p>
+                  <span className="text-[#D4AF37] font-medium uppercase tracking-widest text-[9px]">Objectives</span><br/>
+                  Support real-time actions across WhatsApp, Gmail, Docs, Drive, Sheets, and PowerPoint via Zapier integration.
+                </p>
+                <p>
+                  <span className="text-[#D4AF37] font-medium uppercase tracking-widest text-[9px]">Executive Service</span><br/>
+                  A personalized assistant tailored to your specific language, style, and workflow.
+                </p>
+              </div>
+              <button onClick={() => setShowAbout(false)} className="mt-4 w-full py-3 rounded-xl bg-[#D4AF37] text-black text-xs uppercase tracking-widest font-bold hover:bg-[#D4AF37]/90 transition-colors">
+                Enter Beatrice
+              </button>
             </motion.div>
           </motion.div>
         )}
