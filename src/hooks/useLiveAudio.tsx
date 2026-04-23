@@ -370,16 +370,14 @@ When you speak, also call the report_language function to report the detected in
                   const callId = Math.random().toString(36).substring(7);
                   
                   // Add tool call notification to transcript
-                  if (call.name !== 'report_language') {
-                    toolStartTimeRef.current[call.name] = Date.now();
-                    setTranscript(prev => [...prev, { 
-                      role: 'system', 
-                      text: `Initiating ${call.name.replace(/_/g, ' ')}...`, 
-                      time: new Date().toLocaleTimeString(),
-                      status: 'pending',
-                      toolName: call.name
-                    }].slice(-10));
-                  }
+                  toolStartTimeRef.current[call.name] = Date.now();
+                  setTranscript(prev => [...prev, { 
+                    role: 'system', 
+                    text: `Initiating ${call.name.replace(/_/g, ' ')}...`, 
+                    time: new Date().toLocaleTimeString(),
+                    status: 'pending',
+                    toolName: call.name
+                  }].slice(-10));
 
                   let result: any = { success: true };
                   try {
@@ -390,6 +388,11 @@ When you speak, also call the report_language function to report the detected in
                         output: args.outputLanguage,
                         confidence: args.confidence
                       });
+                      updateToolStatus(
+                        'report_language', 
+                        'success', 
+                        `Language: ${args.inputLanguage} ➔ ${args.outputLanguage} (${args.confidence})`
+                      );
                     } else if (call.name === 'list_recent_emails') {
                       const emails = await GoogleService.listEmails(5);
                       result = emails;
@@ -466,25 +469,23 @@ When you speak, also call the report_language function to report the detected in
 
                     // Handle success for any other tools
                     if (!['report_language', 'list_recent_emails', 'list_calendar_events', 'list_drive_files', 'save_selected_snippet', 'generate_image'].includes(call.name)) {
-                      updateToolStatus(call.name, 'success', `Operation ${call.name} complete`);
+                      updateToolStatus(call.name, 'success', `Execution of ${call.name} verified`);
                     }
                   } catch (err) {
                     console.error(`Tool call error (${call.name}):`, err);
                     result = { error: String(err) };
                     
-                    if (call.name !== 'report_language') {
-                      let msg = String(err).replace('Error: ', '');
-                      if (msg === "DRIVE_API_DISABLED") {
-                        msg = "Google Drive API is disabled. Please enable it in the console.";
-                      } else if (msg === "GMAIL_API_DISABLED") {
-                        msg = "Gmail API is disabled. Please enable it in the console.";
-                      } else if (msg === "CALENDAR_API_DISABLED") {
-                        msg = "Calendar API is disabled. Please enable it in the console.";
-                      } else if (msg === "GOOGLE_API_DISABLED") {
-                        msg = "A required Google API is disabled. Please enable it in the console.";
-                      }
-                      updateToolStatus(call.name, 'error', `Failed: ${msg}`);
+                    let msg = String(err).replace('Error: ', '');
+                    if (msg === "DRIVE_API_DISABLED") {
+                      msg = "Drive Service is inactive. Please enable in Cloud Console.";
+                    } else if (msg === "GMAIL_API_DISABLED") {
+                      msg = "Gmail Service is inactive. Please enable in Cloud Console.";
+                    } else if (msg === "CALENDAR_API_DISABLED") {
+                      msg = "Calendar Service is inactive. Please enable in Cloud Console.";
+                    } else if (msg === "GOOGLE_API_DISABLED") {
+                      msg = "Workspace API handshake failed.";
                     }
+                    updateToolStatus(call.name, 'error', `Halt: ${msg}`);
                   }
                   
                   // Reply to the tool call

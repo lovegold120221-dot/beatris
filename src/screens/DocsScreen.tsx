@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { UploadCloud, File, Trash2, CheckCircle2, Search, Loader2, ExternalLink, X, Scissors, RefreshCw } from 'lucide-react';
+import { UploadCloud, File, Trash2, CheckCircle2, Search, Loader2, ExternalLink, X, Scissors, RefreshCw, MessageCircle } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { GoogleService } from '../services/googleService';
 
 interface DocFile {
   id: string;
-  filename?: string; // from firebase
-  name?: string;     // from google drive
+  filename?: string;
+  name?: string;
   status?: 'indexed' | 'processing' | 'failed';
   type?: string;
   mimeType?: string;
@@ -15,9 +15,17 @@ interface DocFile {
   createdAt: any;
 }
 
+interface Annotation {
+  id: string;
+  textSelection: string;
+  comment: string;
+  createdAt: any;
+}
+
 export default function DocsScreen() {
   const [docs, setDocs] = useState<DocFile[]>([]);
   const [googleDocs, setGoogleDocs] = useState<DocFile[]>([]);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -26,6 +34,8 @@ export default function DocsScreen() {
   const [selectedText, setSelectedText] = useState('');
   const [selectionPosition, setSelectionPosition] = useState({ top: 0, left: 0 });
   const [savingSnippet, setSavingSnippet] = useState(false);
+  const [showAnnotationInput, setShowAnnotationInput] = useState(false);
+  const [newComment, setNewComment] = useState('');
 
   const MOCK_DOCUMENT_CONTENT = `Executive Briefing: Q3 Strategy
 
@@ -106,19 +116,57 @@ Supply chain delays for our hardware rollout may push the physical product launc
     }
   };
 
-  const handleSelection = () => {
-    const selection = window.getSelection();
-    if (selection && selection.toString().trim().length > 0) {
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      // Adjust position relative to the modal container, or use fixed if modal is fixed
-      setSelectedText(selection.toString().trim());
-      setSelectionPosition({
-        top: rect.top - 40,
-        left: rect.left + (rect.width / 2) - 50 // center roughly
+  useEffect(() => {
+    if (!auth.currentUser || !activeDoc) {
+      setAnnotations([]);
+      return;
+    }
+
+    const annRef = collection(db, 'users', auth.currentUser.uid, 'annotations');
+    const q = query(annRef, orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter((a: any) => a.fileId === activeDoc.id) as Annotation[];
+      setAnnotations(data);
+    });
+
+    return () => unsubscribe();
+  }, [activeDoc]);
+
+  const saveAnnotation = async () => {
+    if (!auth.currentUser || !selectedText || !newComment.trim() || !activeDoc) return;
+    setSavingSnippet(true);
+    try {
+      const annRef = collection(db, 'users', auth.currentUser.uid, 'annotations');
+      await addDoc(annRef, {
+        userId: auth.currentUser.uid,
+        fileId: activeDoc.id,
+        textSelection: selectedText,
+        comment: newComment,
+        createdAt: serverTimestamp()
       });
-    } else {
+      
+      // Also save as memory for context
+      const memoriesRef = collection(db, 'users', auth.currentUser.uid, 'memories');
+      await addDoc(memoriesRef, {
+        userId: auth.currentUser.uid,
+        content: `Note on "${selectedText.substring(0, 50)}...": ${newComment}`,
+        type: 'snippet',
+        sourceUrl: activeDoc.filename || activeDoc.name || 'Document',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
       setSelectedText('');
+      setNewComment('');
+      setShowAnnotationInput(false);
+      window.getSelection()?.removeAllRanges();
+    } catch (err) {
+      console.error("Failed to save annotation", err);
+    } finally {
+      setSavingSnippet(false);
     }
   };
 
@@ -137,11 +185,25 @@ Supply chain delays for our hardware rollout may push the physical product launc
       });
       setSelectedText('');
       window.getSelection()?.removeAllRanges();
-      // Optionally show a toast here
     } catch (err) {
       console.error("Failed to save snippet", err);
     } finally {
       setSavingSnippet(false);
+    }
+  };
+
+  const handleSelection = () => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim().length > 0) {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      setSelectedText(selection.toString().trim());
+      setSelectionPosition({
+        top: rect.top - 50,
+        left: rect.left + (rect.width / 2)
+      });
+    } else if (!showAnnotationInput) {
+      setSelectedText('');
     }
   };
 
@@ -151,37 +213,97 @@ Supply chain delays for our hardware rollout may push the physical product launc
         <div className="flex items-center justify-between px-4 pb-4 border-b border-white/10">
           <div className="flex items-center gap-3">
              <div className="p-2 glass-panel-heavy rounded-lg text-white/70">
-               <File size={16} />
+                <File size={16} />
              </div>
              <div className="flex flex-col overflow-hidden">
                <span className="text-sm font-medium truncate text-white/90">{activeDoc.filename || activeDoc.name}</span>
                <span className="text-[10px] uppercase tracking-wider text-white/40 border-[#D4AF37]">{activeDoc.type || 'Document'}</span>
              </div>
           </div>
-          <button onClick={() => setActiveDoc(null)} className="p-2 glass-panel rounded-full hover:bg-white/10 text-white/60">
+          <button onClick={() => { setActiveDoc(null); setSelectedText(''); setShowAnnotationInput(false); }} className="p-2 glass-panel rounded-full hover:bg-white/10 text-white/60">
             <X size={16} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-6 pb-20 relative" onMouseUp={handleSelection} onTouchEnd={handleSelection}>
-           <div className="max-w-md mx-auto text-white/80 font-serif leading-relaxed space-y-4 whitespace-pre-wrap selection:bg-[#D4AF37]/30 selection:text-white">
-              {MOCK_DOCUMENT_CONTENT}
-           </div>
-           
-           {selectedText && (
-             <div 
-               style={{ top: selectionPosition.top, left: selectionPosition.left }}
-               className="fixed z-50 transform -translate-x-1/2"
-             >
-               <button 
-                 onClick={saveSnippet}
-                 disabled={savingSnippet}
-                 className="flex items-center gap-2 bg-[#D4AF37] text-black px-4 py-2 rounded-full shadow-lg shadow-black/50 text-xs font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-               >
-                 {savingSnippet ? <Loader2 size={14} className="animate-spin" /> : <Scissors size={14} />}
-                 Save Snippet
-               </button>
+        
+        <div className="flex-1 flex overflow-hidden">
+          {/* Document Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-6 pb-20 relative border-r border-white/5" onMouseUp={handleSelection} onTouchEnd={handleSelection}>
+             <div className="max-w-2xl mx-auto text-white/80 font-serif leading-relaxed space-y-4 whitespace-pre-wrap selection:bg-[#D4AF37]/30 selection:text-white">
+                {MOCK_DOCUMENT_CONTENT}
              </div>
-           )}
+             
+             {selectedText && !showAnnotationInput && (
+               <div 
+                 style={{ top: selectionPosition.top, left: selectionPosition.left }}
+                 className="fixed z-50 transform -translate-x-1/2 flex gap-2"
+               >
+                 <button 
+                   onClick={saveSnippet}
+                   disabled={savingSnippet}
+                   className="flex items-center gap-2 bg-[#D4AF37] text-black px-4 py-2 rounded-full shadow-lg shadow-black/50 text-[10px] font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                 >
+                   {savingSnippet ? <Loader2 size={12} className="animate-spin" /> : <Scissors size={12} />}
+                   Snippet
+                 </button>
+                 <button 
+                   onClick={() => setShowAnnotationInput(true)}
+                   className="flex items-center gap-2 glass-panel-heavy text-white px-4 py-2 rounded-full shadow-lg shadow-black/50 text-[10px] font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all border border-white/10"
+                 >
+                   <MessageCircle size={12} className="text-[#D4AF37]" />
+                   Annotate
+                 </button>
+               </div>
+             )}
+
+             {showAnnotationInput && (
+                <div 
+                  style={{ top: selectionPosition.top + 40, left: selectionPosition.left }}
+                  className="fixed z-50 transform -translate-x-1/2 w-64 glass-panel-heavy p-4 rounded-2xl shadow-2xl border-[#D4AF37]/30 flex flex-col gap-3 animate-in zoom-in-95"
+                >
+                  <p className="text-[9px] text-white/40 uppercase tracking-widest italic line-clamp-2">"{selectedText}"</p>
+                  <textarea 
+                    autoFocus
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Add your note..."
+                    className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]/50 h-20 font-serif"
+                  />
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={saveAnnotation}
+                      disabled={savingSnippet || !newComment.trim()}
+                      className="flex-1 bg-[#D4AF37] text-black py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest disabled:opacity-50"
+                    >
+                      Save Note
+                    </button>
+                    <button 
+                      onClick={() => { setShowAnnotationInput(false); setSelectedText(''); }}
+                      className="px-3 bg-white/5 text-white/60 rounded-lg text-[10px] uppercase font-bold"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+             )}
+          </div>
+
+          {/* Annotations Sidebar */}
+          <div className="w-80 bg-white/[0.02] overflow-y-auto px-4 py-6 hidden lg:flex flex-col gap-4">
+             <h4 className="text-[10px] uppercase tracking-widest text-[#D4AF37] border-b border-[#D4AF37]/20 pb-2">Notes & Insights</h4>
+             {annotations.length === 0 ? (
+               <div className="text-center py-20">
+                 <p className="text-[10px] text-white/20 uppercase tracking-widest leading-loose">Highlight text to<br/>create context nodes</p>
+               </div>
+             ) : (
+               annotations.map(ann => (
+                 <div key={ann.id} className="glass-panel p-3 rounded-xl flex flex-col gap-2 border-l border-l-[#D4AF37]/50">
+                    <p className="text-[9px] text-white/30 italic line-clamp-1">"{ann.textSelection}"</p>
+                    <p className="text-xs text-white/80 font-serif leading-relaxed">{ann.comment}</p>
+                    <span className="text-[8px] text-white/20 uppercase tracking-widest">{ann.createdAt?.toDate().toLocaleDateString()}</span>
+                 </div>
+               ))
+             )}
+          </div>
         </div>
       </div>
     );

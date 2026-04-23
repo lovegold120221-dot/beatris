@@ -39,6 +39,32 @@
         "createdAt": { "type": "string", "format": "timestamp" }
       },
       "required": ["userId", "filename", "mimeType", "size", "storageUrl", "createdAt"]
+    },
+    "Annotation": {
+      "title": "Annotation",
+      "description": "User notes on specific document segments",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "fileId": { "type": "string" },
+        "textSelection": { "type": "string" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["userId", "fileId", "textSelection", "comment", "createdAt"]
+    },
+    "Reminder": {
+      "title": "Reminder",
+      "description": "User-defined tasks or event alerts",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "dueDate": { "type": "string", "format": "timestamp" },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["userId", "title", "dueDate", "completed", "createdAt"]
     }
   },
   "firestore": {
@@ -53,6 +79,14 @@
     "users/{userId}/files/{fileId}": {
       "schema": { "$ref": "#/entities/UploadedFile" },
       "description": "Uploaded file metadata owned by the user."
+    },
+    "users/{userId}/annotations/{annotationId}": {
+      "schema": { "$ref": "#/entities/Annotation" },
+      "description": "User notes linked to documents."
+    },
+    "users/{userId}/reminders/{reminderId}": {
+      "schema": { "$ref": "#/entities/Reminder" },
+      "description": "User reminders and tasks."
     }
   }
 }

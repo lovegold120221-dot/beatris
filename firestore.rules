@@ -71,6 +71,34 @@ service cloud.firestore {
         && data.createdAt == request.time;
     }
 
+    function isValidAnnotationCreate(data, userId) {
+      return data.keys().hasAll(['userId', 'fileId', 'textSelection', 'comment', 'createdAt'])
+        && data.keys().size() == 5
+        && data.userId == userId
+        && data.fileId is string && data.fileId.size() <= 128
+        && data.textSelection is string && data.textSelection.size() <= 2000
+        && data.comment is string && data.comment.size() <= 1000
+        && data.createdAt == request.time;
+    }
+
+    function isValidReminderCreate(data, userId) {
+      return data.keys().hasAll(['userId', 'title', 'dueDate', 'completed', 'createdAt'])
+        && data.keys().size() == 5
+        && data.userId == userId
+        && data.title is string && data.title.size() <= 200
+        && data.dueDate is timestamp
+        && data.completed is bool
+        && data.createdAt == request.time;
+    }
+
+    function isValidReminderUpdate(data, userId) {
+      return data.title is string && data.title.size() <= 200
+        && data.dueDate is timestamp
+        && data.completed is bool
+        && data.userId == existing().userId
+        && data.createdAt == existing().createdAt;
+    }
+
     // -------------------------------------------------------------------------
     // Routes and Access Rules
     // -------------------------------------------------------------------------
@@ -119,6 +147,20 @@ service cloud.firestore {
         allow update: if false; // file metadata should be immutable 
         
         allow delete: if isValidId(fileId) && isOwner(userId);
+      }
+
+      match /annotations/{annotationId} {
+        allow list: if isOwner(userId);
+        allow create: if isValidId(annotationId) && isOwner(userId) && isValidAnnotationCreate(incoming(), userId);
+        allow delete: if isValidId(annotationId) && isOwner(userId);
+      }
+
+      match /reminders/{reminderId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(reminderId);
+        allow create: if isValidId(reminderId) && isOwner(userId) && isValidReminderCreate(incoming(), userId);
+        allow update: if isValidId(reminderId) && isOwner(userId) && isValidReminderUpdate(incoming(), userId);
+        allow delete: if isValidId(reminderId) && isOwner(userId);
       }
     }
   }

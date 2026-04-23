@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, MessageCircle, AlertCircle, CheckCircle2, BrainCircuit, Loader2, Scissors } from 'lucide-react';
+import { Mail, MessageCircle, AlertCircle, CheckCircle2, BrainCircuit, Loader2, Scissors, Search } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { GoogleService } from '../services/googleService';
@@ -18,6 +18,7 @@ export default function MemoryScreen() {
   const [emails, setEmails] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All Context');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -66,13 +67,22 @@ export default function MemoryScreen() {
      return dateB.getTime() - dateA.getTime();
   });
 
-  const filteredMemories = filter === 'All Context' 
-    ? combinedMemories 
-    : combinedMemories.filter(m => {
-        if (filter === 'Emails') return m.type === 'email';
-        if (filter === 'WhatsApp') return m.type === 'whatsapp';
-        return true;
-      });
+  const filteredMemories = combinedMemories.filter(m => {
+    // Search keyword check
+    const matchesSearch = searchQuery === '' || 
+      m.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.subject?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (m.from?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    if (!matchesSearch) return false;
+
+    // Type filter check
+    if (filter === 'All Context') return true;
+    if (filter === 'Emails') return m.type === 'email';
+    if (filter === 'WhatsApp') return m.type === 'whatsapp';
+    if (filter === 'Snippets') return m.type === 'snippet';
+    return true;
+  });
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -91,8 +101,19 @@ export default function MemoryScreen() {
         <span className="text-[10px] uppercase tracking-wider text-white/40">Real-time Sync</span>
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={14} />
+        <input 
+          type="text" 
+          placeholder="Search keywords, names, or topics..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full glass-panel pl-10 pr-4 py-3 rounded-xl text-xs text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30 transition-all font-serif"
+        />
+      </div>
+
       <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-        {['All Context', 'Emails', 'WhatsApp', 'Follow-ups'].map((f) => (
+        {['All Context', 'Emails', 'WhatsApp', 'Snippets'].map((f) => (
           <button 
             key={f} 
             onClick={() => setFilter(f)}
