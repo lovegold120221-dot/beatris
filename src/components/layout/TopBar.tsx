@@ -41,8 +41,7 @@ export default function TopBar() {
   return (
     <div className="pt-8 px-6 pb-4 flex justify-between items-center bg-gradient-to-b from-black to-transparent z-10 w-full relative">
       <div className="flex flex-col">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold">Project</span>
-        <h1 className="text-xl font-serif tracking-tight">Beatrice</h1>
+        <h1 className="text-sm font-serif tracking-tight">Beatrice Small</h1>
       </div>
 
       <div className="flex items-center gap-3">

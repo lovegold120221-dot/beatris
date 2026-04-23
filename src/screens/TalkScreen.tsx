@@ -206,103 +206,11 @@ export default function TalkScreen() {
             </motion.div>
           </motion.div>
 
-          {/* Live Transcription Area (Moved to bottom panel) */}
-          <div className="flex-1 flex flex-col justify-center items-center relative z-10 pointer-events-none">
-            {/* Keeping this space flexible for the orb to move */}
+          {/* Interactive Layout Area Content */}
+          <div className="flex-1 flex flex-col justify-center items-center relative z-10">
+             {/* Main interaction space is now clean */}
           </div>
         </div>
-
-        {/* Dynamic Transcription Monitor (Repurposed from Context Panel) */}
-        <motion.div layout className="mb-6 mx-6 bg-black/60 backdrop-blur-2xl border border-[#D4AF37]/30 rounded-2xl p-5 relative overflow-hidden shrink-0 shadow-2xl">
-          <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#D4AF37]/5 rounded-full blur-3xl"></div>
-          
-          <div className="flex justify-between items-center border-b border-white/10 pb-3 mb-4 relative z-10">
-            <div className="flex items-center gap-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500 animate-pulse' : 'bg-white/20'}`}></div>
-              <span className="text-[10px] uppercase tracking-[0.2em] text-white/50 font-bold">
-                Live Transcription
-              </span>
-            </div>
-            {connected && (
-              <span className="text-[9px] font-mono text-[#D4AF37] px-2 py-0.5 rounded bg-[#D4AF37]/10 flex items-center gap-1.5 leading-none">
-                <Waves size={10} /> STREAMING
-              </span>
-            )}
-          </div>
-
-          <div ref={scrollRef} className="space-y-4 max-h-32 overflow-y-auto hide-scrollbar relative z-10 scroll-smooth">
-            <AnimatePresence mode="popLayout" initial={false}>
-              {transcript.length === 0 ? (
-                <motion.div 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  className="flex items-center justify-center py-4"
-                >
-                  <span className="text-[10px] text-white/20 uppercase tracking-widest italic">Waiting for connection...</span>
-                </motion.div>
-              ) : (
-                transcript.map((t, i) => (
-                  <motion.div 
-                    layout
-                    key={`${i}-${t.time}`}
-                    initial={{ opacity: 0, x: t.role === 'jo' ? 10 : -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex flex-col gap-1"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className={`text-[8px] uppercase tracking-widest font-bold ${
-                        t.role === 'beatrice' ? 'text-[#D4AF37]' : 
-                        t.role === 'system' ? 'text-white/40' : 'text-blue-400'
-                      }`}>
-                        {t.role === 'beatrice' ? 'Beatrice Agent' : 
-                         t.role === 'system' ? 'System Process' : 'User (Maneer Jo)'}
-                      </span>
-                      <span className="text-[8px] text-white/20 font-mono">{t.time}</span>
-                    </div>
-                    <div className="flex items-start gap-2 group">
-                      {t.role === 'system' && (
-                        <div className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
-                          t.status === 'pending' ? 'bg-amber-500 animate-pulse' :
-                          t.status === 'success' ? 'bg-emerald-500' : 'bg-red-500'
-                        }`} />
-                      )}
-                      <p className={`text-xs leading-relaxed font-serif ${
-                        t.role === 'jo' ? 'text-white/80' : 
-                        t.role === 'system' ? 'text-white/40 font-mono text-[10px]' : 'text-white'
-                      }`}>
-                        {t.text}
-                        {i === transcript.length - 1 && connected && t.role !== 'system' && (
-                          <motion.span 
-                            animate={{ opacity: [1, 0, 1] }} 
-                            transition={{ repeat: Infinity, duration: 0.8 }}
-                            className="inline-block w-1.5 h-3 ml-1 bg-[#D4AF37] align-middle"
-                          />
-                        )}
-                      </p>
-                    </div>
-                    {t.image && (
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="mt-2 rounded-xl border border-white/10 overflow-hidden shadow-lg"
-                      >
-                         <img src={t.image} alt="Generative Output" className="w-full h-auto" referrerPolicy="no-referrer" />
-                      </motion.div>
-                    )}
-                  </motion.div>
-                ))
-              )}
-            </AnimatePresence>
-            <div className="h-2" /> {/* Buffer for scrolling */}
-          </div>
-
-          {/* Technical Accents */}
-          <div className="absolute bottom-2 right-4 flex gap-1 opacity-20">
-            <div className="w-0.5 h-0.5 rounded-full bg-white"></div>
-            <div className="w-0.5 h-0.5 rounded-full bg-white"></div>
-            <div className="w-0.5 h-0.5 rounded-full bg-white"></div>
-          </div>
-        </motion.div>
 
       </div>
     </div>

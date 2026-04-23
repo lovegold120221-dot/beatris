@@ -11,6 +11,7 @@ interface Memory {
   createdAt: any;
   from?: string;
   subject?: string;
+  body?: string;
 }
 
 export default function MemoryScreen() {
@@ -19,6 +20,17 @@ export default function MemoryScreen() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All Context');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchingRemote, setSearchingRemote] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -39,27 +51,37 @@ export default function MemoryScreen() {
       setLoading(false);
     });
 
-    // Load real Gmail messages for synthesis
-    async function loadGmail() {
+    return () => unsubscribe();
+  }, []);
+
+  // Sync emails specifically when search query changes
+  useEffect(() => {
+    if (!auth.currentUser) return;
+
+    const timer = setTimeout(async () => {
+      setSearchingRemote(true);
       try {
-        const messages = await GoogleService.listEmails(5);
+        // If query is empty, just list recent 5. Otherwise, search.
+        const messages = await GoogleService.listEmails(searchQuery ? 20 : 5, searchQuery);
         const emailMemories = messages.map((m: any) => ({
           id: m.id,
           content: m.snippet,
           subject: m.subject,
           from: m.from,
+          body: m.body,
           type: 'email' as const,
           createdAt: { toDate: () => new Date() } // placeholder for display
         }));
         setEmails(emailMemories);
       } catch (err) {
-        console.error("Failed to load Gmail messages", err);
+        console.error("Failed to sync Gmail", err);
+      } finally {
+        setSearchingRemote(false);
       }
-    }
-    loadGmail();
+    }, searchQuery ? 500 : 0);
 
-    return () => unsubscribe();
-  }, []);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const combinedMemories = [...emails, ...memories].sort((a, b) => {
      const dateA = a.createdAt?.toDate?.() || new Date(0);
@@ -102,7 +124,11 @@ export default function MemoryScreen() {
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={14} />
+        {searchingRemote ? (
+          <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#D4AF37] animate-spin" size={14} />
+        ) : (
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={14} />
+        )}
         <input 
           type="text" 
           placeholder="Search keywords, names, or topics..."
@@ -151,7 +177,7 @@ export default function MemoryScreen() {
               )}
 
               <p className="text-sm font-serif leading-relaxed text-white/80">
-                {memory.content}
+                {memory.type === 'email' && expandedIds.has(memory.id) ? (memory.body || memory.content) : memory.content}
               </p>
               
               <div className="flex items-center justify-between mt-2 pt-3 border-t border-white/10">
@@ -161,6 +187,15 @@ export default function MemoryScreen() {
                     {memory.createdAt?.toDate?.() ? memory.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live'}
                   </span>
                 </div>
+                {memory.type === 'email' && (
+                  <button 
+                    onClick={() => toggleExpand(memory.id)}
+                    className="text-[10px] uppercase tracking-widest text-[#D4AF37] hover:text-white transition-colors flex items-center gap-1"
+                  >
+                    {expandedIds.has(memory.id) ? 'Collapse' : 'Show Full Email'}
+                    <p className="text-[8px] transform rotate-90">{expandedIds.has(memory.id) ? '◀' : '▶'}</p>
+                  </button>
+                )}
               </div>
             </div>
           ))

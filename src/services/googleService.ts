@@ -43,8 +43,9 @@ export class GoogleService {
     return response.json();
   }
 
-  static async listEmails(maxResults: number = 5) {
-    const data = await this.fetchGoogle(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}`);
+  static async listEmails(maxResults: number = 5, query: string = '') {
+    const qParam = query ? `&q=${encodeURIComponent(query)}` : '';
+    const data = await this.fetchGoogle(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}${qParam}`);
     if (!data.messages) return [];
 
     const details = await Promise.all(
@@ -58,7 +59,21 @@ export class GoogleService {
       const subject = headers.find((h: any) => h.name === 'Subject')?.value || 'No Subject';
       const from = headers.find((h: any) => h.name === 'From')?.value || 'Unknown';
       const snippet = m.snippet;
-      return { id: m.id, subject, from, snippet };
+      
+      // Attempt to extract body
+      let body = '';
+      if (m.payload.parts) {
+        const textPart = m.payload.parts.find((p: any) => p.mimeType === 'text/plain');
+        if (textPart && textPart.body.data) {
+          body = atob(textPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        } else if (m.payload.parts[0]?.body?.data) {
+          body = atob(m.payload.parts[0].body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        }
+      } else if (m.payload.body.data) {
+        body = atob(m.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+      }
+
+      return { id: m.id, subject, from, snippet, body: body || snippet };
     });
   }
 
