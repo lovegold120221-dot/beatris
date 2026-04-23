@@ -45,9 +45,18 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
 
 export type TalkContext = 'Work' | 'Personal' | 'Travel';
 
+export interface TranscriptItem {
+  role: 'jo' | 'beatrice' | 'system';
+  text: string;
+  time: string;
+  image?: string;
+  status?: 'pending' | 'success' | 'error';
+  toolName?: string;
+}
+
 export function useLiveAPI(contextString: TalkContext = 'Work') {
   const [connected, setConnected] = useState(false);
-  const [transcript, setTranscript] = useState<{ role: 'jo' | 'beatrice', text: string, time: string, image?: string }[]>([]);
+  const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [speaking, setSpeaking] = useState(false);
   const [detectedLanguage, setDetectedLanguage] = useState<{input: string, output: string, confidence: string} | null>(null);
   const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(null);
@@ -319,7 +328,19 @@ When you speak, also call the report_language function to report the detected in
                 }
                 if (part.functionCall) {
                   const call = part.functionCall;
+                  const callId = Math.random().toString(36).substring(7);
                   
+                  // Add tool call notification to transcript
+                  if (call.name !== 'report_language') {
+                    setTranscript(prev => [...prev, { 
+                      role: 'system', 
+                      text: `Accessing ${call.name.replace(/_/g, ' ')}...`, 
+                      time: new Date().toLocaleTimeString(),
+                      status: 'pending',
+                      toolName: call.name
+                    }].slice(-10));
+                  }
+
                   let result: any = { success: true };
                   try {
                     if (call.name === 'report_language') {
@@ -340,20 +361,69 @@ When you speak, also call the report_language function to report the detected in
                       const imageUrl = await ImageService.generateImage(args.prompt);
                       if (imageUrl) {
                         setLastGeneratedImage(imageUrl);
-                        setTranscript(prev => [...prev, { 
-                          role: 'beatrice', 
-                          text: `Generated image: ${args.prompt}`, 
-                          time: new Date().toLocaleTimeString(),
-                          image: imageUrl
-                        }].slice(-5));
-                        result = { success: true, message: "Image generated and displayed to Jo." };
+                        setTranscript(prev => {
+                          const updated = [...prev];
+                          // Find the pending tool call and update it (searching from end)
+                          let toolIdx = -1;
+                          for (let i = updated.length - 1; i >= 0; i--) {
+                            if (updated[i].toolName === 'generate_image' && updated[i].status === 'pending') {
+                              toolIdx = i;
+                              break;
+                            }
+                          }
+                          if (toolIdx !== -1) {
+                            updated[toolIdx] = { 
+                              ...updated[toolIdx], 
+                              status: 'success', 
+                              text: `Image generated: "${args.prompt}"`,
+                              image: imageUrl
+                            };
+                          }
+                          return updated.slice(-10);
+                        });
+                        result = { success: true, image_url: imageUrl };
                       } else {
-                        result = { success: false, error: "Failed to generate image." };
+                        throw new Error("Failed to generate image.");
                       }
+                    }
+
+                    // For other tools, update status to success
+                    if (call.name !== 'report_language' && call.name !== 'generate_image') {
+                      setTranscript(prev => {
+                        const updated = [...prev];
+                        let toolIdx = -1;
+                        for (let i = updated.length - 1; i >= 0; i--) {
+                          if (updated[i].toolName === call.name && updated[i].status === 'pending') {
+                            toolIdx = i;
+                            break;
+                          }
+                        }
+                        if (toolIdx !== -1) {
+                          updated[toolIdx] = { ...updated[toolIdx], status: 'success', text: `Successfully accessed ${call.name.replace(/_/g, ' ')}` };
+                        }
+                        return updated.slice(-10);
+                      });
                     }
                   } catch (err) {
                     console.error(`Tool call error (${call.name}):`, err);
                     result = { error: String(err) };
+                    
+                    if (call.name !== 'report_language') {
+                      setTranscript(prev => {
+                        const updated = [...prev];
+                        let toolIdx = -1;
+                        for (let i = updated.length - 1; i >= 0; i--) {
+                          if (updated[i].toolName === call.name && updated[i].status === 'pending') {
+                            toolIdx = i;
+                            break;
+                          }
+                        }
+                        if (toolIdx !== -1) {
+                          updated[toolIdx] = { ...updated[toolIdx], status: 'error', text: `Failed to access ${call.name.replace(/_/g, ' ')}` };
+                        }
+                        return updated.slice(-10);
+                      });
+                    }
                   }
                   
                   // Reply to the tool call

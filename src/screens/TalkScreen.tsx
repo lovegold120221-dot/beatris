@@ -250,21 +250,36 @@ export default function TalkScreen() {
                     className="flex flex-col gap-1"
                   >
                     <div className="flex items-center justify-between">
-                      <span className={`text-[8px] uppercase tracking-widest font-bold ${t.role === 'beatrice' ? 'text-[#D4AF37]' : 'text-blue-400'}`}>
-                        {t.role === 'beatrice' ? 'Beatrice Agent' : 'User (Maneer Jo)'}
+                      <span className={`text-[8px] uppercase tracking-widest font-bold ${
+                        t.role === 'beatrice' ? 'text-[#D4AF37]' : 
+                        t.role === 'system' ? 'text-white/40' : 'text-blue-400'
+                      }`}>
+                        {t.role === 'beatrice' ? 'Beatrice Agent' : 
+                         t.role === 'system' ? 'System Process' : 'User (Maneer Jo)'}
                       </span>
                       <span className="text-[8px] text-white/20 font-mono">{t.time}</span>
                     </div>
-                    <p className={`text-xs leading-relaxed font-serif ${t.role === 'jo' ? 'text-white/80' : 'text-white'}`}>
-                      {t.text}
-                      {i === transcript.length - 1 && connected && (
-                        <motion.span 
-                          animate={{ opacity: [1, 0, 1] }} 
-                          transition={{ repeat: Infinity, duration: 0.8 }}
-                          className="inline-block w-1.5 h-3 ml-1 bg-[#D4AF37] align-middle"
-                        />
+                    <div className="flex items-start gap-2 group">
+                      {t.role === 'system' && (
+                        <div className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
+                          t.status === 'pending' ? 'bg-amber-500 animate-pulse' :
+                          t.status === 'success' ? 'bg-emerald-500' : 'bg-red-500'
+                        }`} />
                       )}
-                    </p>
+                      <p className={`text-xs leading-relaxed font-serif ${
+                        t.role === 'jo' ? 'text-white/80' : 
+                        t.role === 'system' ? 'text-white/40 font-mono text-[10px]' : 'text-white'
+                      }`}>
+                        {t.text}
+                        {i === transcript.length - 1 && connected && t.role !== 'system' && (
+                          <motion.span 
+                            animate={{ opacity: [1, 0, 1] }} 
+                            transition={{ repeat: Infinity, duration: 0.8 }}
+                            className="inline-block w-1.5 h-3 ml-1 bg-[#D4AF37] align-middle"
+                          />
+                        )}
+                      </p>
+                    </div>
                     {t.image && (
                       <motion.div 
                         initial={{ opacity: 0, scale: 0.95 }}
