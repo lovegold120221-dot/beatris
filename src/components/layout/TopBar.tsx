@@ -8,6 +8,15 @@ export default function TopBar() {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [language, setLanguage] = useState('FR');
+  const [hasGoogleToken, setHasGoogleToken] = useState(!!localStorage.getItem('beatrice_google_access_token'));
+
+  React.useEffect(() => {
+    const checkToken = () => {
+      setHasGoogleToken(!!localStorage.getItem('beatrice_google_access_token'));
+    };
+    const interval = setInterval(checkToken, 2000);
+    return () => clearInterval(interval);
+  }, []);
   const userLanguages = [
     { code: 'FR', label: 'French (Executive Mode)' },
     { code: 'EN', label: 'English' },
@@ -134,6 +143,13 @@ export default function TopBar() {
                 >
                   <Sparkles size={14} className="text-[#D4AF37]" />
                   <span>Our Vision</span>
+                </button>
+                <button 
+                  onClick={handleConnectGoogle}
+                  className={`flex items-center gap-3 px-3 py-2 text-xs rounded-xl transition-colors ${hasGoogleToken ? 'text-white/40 grayscale opacity-50' : 'text-emerald-400 bg-emerald-400/5'}`}
+                >
+                  <Wifi size={14} />
+                  <span>{hasGoogleToken ? 'Google Synced' : 'Sync Google Services'}</span>
                 </button>
                 <button 
                   onClick={handleLogout}

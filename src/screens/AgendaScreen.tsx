@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Clock, Users, ArrowRight, MessageCircle, Loader2, Bell, CheckCircle2, Plus, X } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { GoogleService } from '../services/googleService';
-import { db, auth } from '../lib/firebase';
+import { db, auth, handleFirestoreError } from '../lib/firebase';
 
 interface Reminder {
   id: string;
@@ -41,6 +41,8 @@ export default function AgendaScreen() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Reminder[];
       setReminders(data);
+    }, (error) => {
+      handleFirestoreError(error, 'list', `users/${auth.currentUser?.uid}/reminders`);
     });
 
     return () => unsubscribe();

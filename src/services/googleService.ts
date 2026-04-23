@@ -31,10 +31,12 @@ export class GoogleService {
       const message = errorData.error?.message || response.statusText;
       
       if (message.includes("is disabled") || message.includes("not been used")) {
-        if (url.includes("gmail.googleapis.com")) throw new Error("GMAIL_API_DISABLED");
-        if (url.includes("calendar-json.googleapis.com") || url.includes("calendar.googleapis.com")) throw new Error("CALENDAR_API_DISABLED");
-        if (url.includes("drive.googleapis.com")) throw new Error("DRIVE_API_DISABLED");
-        throw new Error("GOOGLE_API_DISABLED");
+        let service = "a Google Service";
+        if (url.includes("gmail.googleapis.com")) service = "Gmail API";
+        if (url.includes("calendar.googleapis.com")) service = "Google Calendar API";
+        if (url.includes("drive.googleapis.com")) service = "Google Drive API";
+        
+        throw new Error(`ACTION REQUIRED: ${service} is disabled. Contact support or enable it at https://console.cloud.google.com/apis/library.`);
       }
       
       throw new Error(`Google API Error: ${response.status} ${message}`);

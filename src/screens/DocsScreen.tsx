@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { UploadCloud, File, Trash2, CheckCircle2, Search, Loader2, ExternalLink, X, Scissors, RefreshCw, MessageCircle } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, where } from 'firebase/firestore';
+import { db, auth, handleFirestoreError } from '../lib/firebase';
 import { GoogleService } from '../services/googleService';
 
 interface DocFile {
@@ -59,11 +59,7 @@ Supply chain delays for our hardware rollout may push the physical product launc
       setGoogleDocs(files);
     } catch (err: any) {
       console.error("Failed to load Google Drive files", err);
-      if (err.message === "DRIVE_API_DISABLED") {
-        setSyncError("Google Drive API is disabled. Please enable it in the console.");
-      } else {
-        setSyncError("Failed to load files.");
-      }
+      setSyncError(err.message || "Failed to load files.");
     } finally {
       setSyncing(false);
     }
@@ -84,7 +80,7 @@ Supply chain delays for our hardware rollout may push the physical product launc
       setDocs(docsData);
       setLoading(false);
     }, (error) => {
-      console.error("Error fetching docs:", error);
+      handleFirestoreError(error, 'list', `users/${auth.currentUser?.uid}/files`);
       setLoading(false);
     });
 
@@ -130,6 +126,8 @@ Supply chain delays for our hardware rollout may push the physical product launc
         .map(d => ({ id: d.id, ...d.data() }))
         .filter((a: any) => a.fileId === activeDoc.id) as Annotation[];
       setAnnotations(data);
+    }, (error) => {
+      handleFirestoreError(error, 'list', `users/${auth.currentUser?.uid}/annotations`);
     });
 
     return () => unsubscribe();

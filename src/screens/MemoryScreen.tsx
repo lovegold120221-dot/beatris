@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, MessageCircle, AlertCircle, CheckCircle2, BrainCircuit, Loader2, Scissors, Search } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { db, auth, handleFirestoreError } from '../lib/firebase';
 import { GoogleService } from '../services/googleService';
 
 interface Memory {
@@ -47,7 +47,7 @@ export default function MemoryScreen() {
       setMemories(docs);
       setLoading(false);
     }, (error) => {
-      console.error("Error fetching memories:", error);
+      handleFirestoreError(error, 'list', `users/${auth.currentUser?.uid}/memories`);
       setLoading(false);
     });
 
