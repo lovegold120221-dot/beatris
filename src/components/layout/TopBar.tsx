@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { Languages, Wifi, Mic, LogOut, User, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { auth } from '../../lib/firebase';
+import { auth, db } from '../../lib/firebase';
 import { signOut } from 'firebase/auth';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function TopBar() {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [language, setLanguage] = useState('FR');
   const [hasGoogleToken, setHasGoogleToken] = useState(!!localStorage.getItem('beatrice_google_access_token'));
+  const [isSyncing, setIsSyncing] = useState(false);
 
   React.useEffect(() => {
     const checkToken = () => {
@@ -30,13 +32,21 @@ export default function TopBar() {
 
   const handleConnectGoogle = async () => {
     try {
+      setIsSyncing(true);
       const { signInWithPopup, GoogleAuthProvider } = await import('firebase/auth');
       const { googleProvider } = await import('../../lib/firebase');
       const result = await signInWithPopup(auth, googleProvider);
       
       const credential = GoogleAuthProvider.credentialFromResult(result);
-      if (credential?.accessToken) {
+      if (credential?.accessToken && auth.currentUser) {
         localStorage.setItem('beatrice_google_access_token', credential.accessToken);
+        
+        // Securely store in Firestore profile for persistence and recovery
+        const userRef = doc(db, 'users', auth.currentUser.uid);
+        await updateDoc(userRef, {
+          googleAccessToken: credential.accessToken,
+          updatedAt: serverTimestamp()
+        });
       }
       setProfileOpen(false);
     } catch (err: any) {
@@ -44,6 +54,8 @@ export default function TopBar() {
       if (err.message?.includes('auth/unauthorized-domain')) {
         alert(`Domain not authorized. Add ${window.location.hostname} to Firebase Authorized Domains.`);
       }
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -146,10 +158,11 @@ export default function TopBar() {
                 </button>
                 <button 
                   onClick={handleConnectGoogle}
-                  className={`flex items-center gap-3 px-3 py-2 text-xs rounded-xl transition-colors ${hasGoogleToken ? 'text-white/40 grayscale opacity-50' : 'text-emerald-400 bg-emerald-400/5'}`}
+                  disabled={isSyncing}
+                  className={`flex items-center gap-3 px-3 py-2 text-xs rounded-xl transition-colors ${hasGoogleToken && !isSyncing ? 'text-white/40 grayscale opacity-50' : 'text-emerald-400 bg-emerald-400/5 hover:bg-emerald-400/10'}`}
                 >
-                  <Wifi size={14} />
-                  <span>{hasGoogleToken ? 'Google Synced' : 'Sync Google Services'}</span>
+                  <Wifi size={14} className={isSyncing ? 'animate-pulse' : ''} />
+                  <span>{isSyncing ? 'Syncing...' : hasGoogleToken ? 'Google Synced' : 'Sync Google Services'}</span>
                 </button>
                 <button 
                   onClick={handleLogout}

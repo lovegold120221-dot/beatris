@@ -7,6 +7,7 @@
       "properties": {
         "email": { "type": "string" },
         "displayName": { "type": "string" },
+        "googleAccessToken": { "type": "string", "description": "Securely stored transient access token for Google APIs" },
         "createdAt": { "type": "string", "format": "timestamp" },
         "updatedAt": { "type": "string", "format": "timestamp" }
       },

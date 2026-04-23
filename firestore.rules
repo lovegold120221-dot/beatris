@@ -92,7 +92,7 @@ service cloud.firestore {
       allow update: if isValidId(userId)
                     && isOwner(userId)
                     && isValidUserUpdate(incoming())
-                    && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt']);
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'googleAccessToken', 'updatedAt']);
 
       allow delete: if false;
 

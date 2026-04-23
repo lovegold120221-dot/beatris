@@ -30,6 +30,8 @@ export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('https://www.googleapis.com/auth/gmail.readonly'); 
 googleProvider.addScope('https://www.googleapis.com/auth/drive.readonly'); 
 googleProvider.addScope('https://www.googleapis.com/auth/documents.readonly'); 
+googleProvider.addScope('https://www.googleapis.com/auth/spreadsheets.readonly');
+googleProvider.addScope('https://www.googleapis.com/auth/presentations.readonly');
 googleProvider.addScope('https://www.googleapis.com/auth/calendar.readonly'); 
 googleProvider.addScope('https://www.googleapis.com/auth/contacts.readonly');
 googleProvider.addScope('https://www.googleapis.com/auth/userinfo.email');

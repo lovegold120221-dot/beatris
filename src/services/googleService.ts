@@ -1,15 +1,37 @@
+import { doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
+
 /**
  * Service for interacting with Google APIs (Gmail, Calendar, Drive)
  * using the access token obtained during login.
  */
 
 export class GoogleService {
-  private static getAccessToken(): string | null {
-    return localStorage.getItem('beatrice_google_access_token');
+  private static async getAccessToken(): Promise<string | null> {
+    const localToken = localStorage.getItem('beatrice_google_access_token');
+    if (localToken) return localToken;
+
+    // Fallback: Try to get from Firestore profile (securely synced)
+    if (auth.currentUser) {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        if (userDoc.exists()) {
+          const cloudToken = userDoc.data().googleAccessToken;
+          if (cloudToken) {
+            localStorage.setItem('beatrice_google_access_token', cloudToken);
+            return cloudToken;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to recover token from Firestore", e);
+      }
+    }
+
+    return null;
   }
 
   private static async fetchGoogle(url: string, options: RequestInit = {}) {
-    const token = this.getAccessToken();
+    const token = await this.getAccessToken();
     if (!token) throw new Error("No Google access token found. Please sign in with Google.");
 
     const headers = {
