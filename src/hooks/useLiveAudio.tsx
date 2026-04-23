@@ -254,6 +254,33 @@ When you speak, also call the report_language function to report the detected in
               stopPlayback();
             }
 
+            // Handle Transcriptions
+            if (message.serverContent?.modelTurn?.parts) {
+               // Sometimes output transcription comes inside the model parts if it's text
+               for(const p of message.serverContent.modelTurn.parts) {
+                 if (p.text) {
+                   setTranscript((prev) => {
+                     const text = p.text || '';
+                     if (!text.trim()) return prev;
+                     return [...prev, { role: 'beatrice', text: text, time: new Date().toLocaleTimeString() }].slice(-5);
+                   });
+                 }
+               }
+            }
+
+            if (message.serverContent?.inputTranscription?.text) {
+               const text = message.serverContent.inputTranscription.text;
+               if (text.trim()) {
+                 setTranscript((prev) => [...prev, { role: 'jo', text, time: new Date().toLocaleTimeString() }].slice(-5));
+               }
+            }
+            if (message.serverContent?.outputTranscription?.text) {
+               const text = message.serverContent.outputTranscription.text;
+               if (text.trim()) {
+                 setTranscript((prev) => [...prev, { role: 'beatrice', text, time: new Date().toLocaleTimeString() }].slice(-5));
+               }
+            }
+
             if (message.serverContent?.modelTurn?.parts) {
               for (const part of message.serverContent.modelTurn.parts) {
                 if (part.inlineData?.data) {

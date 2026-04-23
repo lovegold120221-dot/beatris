@@ -7,7 +7,7 @@ export default function TalkScreen() {
   const [activeContext, setActiveContext] = useState<TalkContext>(() => {
     return (localStorage.getItem('beatrice_active_context') as TalkContext) || 'Work';
   });
-  const { connect, disconnect, connected, speaking, detectedLanguage } = useLiveAPI(activeContext);
+  const { connect, disconnect, connected, speaking, detectedLanguage, transcript } = useLiveAPI(activeContext);
   const [orbState, setOrbState] = useState<'idle' | 'listening' | 'speaking'>('idle');
   const [showMicPrompt, setShowMicPrompt] = useState(false);
 
@@ -203,8 +203,35 @@ export default function TalkScreen() {
           </div>
         </div>
 
+        {/* Live Transcription Area */}
+        <div className="px-6 mb-4 flex-1 flex flex-col justify-end">
+          <div className="flex flex-col gap-2 max-h-32 overflow-y-auto hide-scrollbar mask-image-fade-top">
+            <AnimatePresence>
+              {transcript.map((t, i) => (
+                <motion.div 
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex flex-col ${t.role === 'beatrice' ? 'items-start' : 'items-end'}`}
+                >
+                  <span className={`text-[9px] uppercase tracking-wider mb-0.5 ${t.role === 'beatrice' ? 'text-[#D4AF37]' : 'text-blue-400'}`}>
+                    {t.role === 'beatrice' ? 'Beatrice' : 'You'}
+                  </span>
+                  <div className={`text-xs px-3 py-2 rounded-2xl max-w-[85%] ${
+                    t.role === 'beatrice' 
+                      ? 'bg-[#D4AF37]/10 text-white/90 rounded-tl-sm border border-[#D4AF37]/20' 
+                      : 'bg-blue-500/10 text-white/90 rounded-tr-sm border border-blue-500/20'
+                  }`}>
+                    {t.text}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        </div>
+
         {/* Enhanced Context Panel */}
-        <div className="mb-6 bg-white/5 backdrop-blur-xl border border-[#D4AF37]/20 rounded-2xl p-4 space-y-3 relative overflow-hidden">
+        <div className="mb-6 mx-6 bg-white/5 backdrop-blur-xl border border-[#D4AF37]/20 rounded-2xl p-4 space-y-3 relative overflow-hidden">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#D4AF37]/5 rounded-full blur-2xl"></div>
           <div className="flex justify-between items-center border-b border-white/5 pb-2 relative z-10">
             <span className="text-[10px] uppercase tracking-wider text-white/50 font-bold flex items-center gap-2">

@@ -31,3 +31,7 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.mask-image-fade-top {
+  mask-image: linear-gradient(to bottom, transparent, black 15%);
+}
