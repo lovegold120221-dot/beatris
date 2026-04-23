@@ -19,6 +19,27 @@ export default function TopBar() {
     signOut(auth);
   };
 
+  const handleConnectGoogle = async () => {
+    try {
+      const { signInWithPopup, GoogleAuthProvider } = await import('firebase/auth');
+      const { googleProvider } = await import('../../lib/firebase');
+      const result = await signInWithPopup(auth, googleProvider);
+      
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        localStorage.setItem('beatrice_google_access_token', credential.accessToken);
+      }
+      setProfileOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      if (err.message?.includes('auth/unauthorized-domain')) {
+        alert(`Domain not authorized. Add ${window.location.hostname} to Firebase Authorized Domains.`);
+      }
+    }
+  };
+
+  const isAnon = !auth.currentUser || auth.currentUser.isAnonymous;
+
   return (
     <div className="pt-8 px-6 pb-4 flex justify-between items-center bg-gradient-to-b from-black to-transparent z-10 w-full relative">
       <div className="flex flex-col">
@@ -103,15 +124,27 @@ export default function TopBar() {
                 className="absolute top-full right-0 mt-2 w-48 glass-panel-heavy rounded-2xl p-2 shadow-2xl flex flex-col gap-1 border border-white/20 origin-top-right z-50 overflow-hidden"
               >
                 <div className="px-3 py-2 border-b border-white/5 mb-1">
-                  <p className="text-[10px] text-white/40 uppercase tracking-widest truncate">{auth.currentUser?.email}</p>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest truncate">
+                    {isAnon ? 'Anonymous Mode' : auth.currentUser?.email}
+                  </p>
                 </div>
-                <button 
-                  onClick={handleLogout}
-                  className="flex items-center gap-3 px-3 py-2 text-xs text-rose-400 hover:bg-rose-400/10 rounded-xl transition-colors"
-                >
-                  <LogOut size={14} />
-                  <span>Logout</span>
-                </button>
+                {isAnon ? (
+                  <button 
+                    onClick={handleConnectGoogle}
+                    className="flex items-center gap-3 px-3 py-2 text-xs text-[#D4AF37] hover:bg-[#D4AF37]/10 rounded-xl transition-colors"
+                  >
+                    <User size={14} />
+                    <span>Connect Google</span>
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 px-3 py-2 text-xs text-rose-400 hover:bg-rose-400/10 rounded-xl transition-colors"
+                  >
+                    <LogOut size={14} />
+                    <span>Logout</span>
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

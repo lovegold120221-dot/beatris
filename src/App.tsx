@@ -5,7 +5,6 @@ import DocsScreen from './screens/DocsScreen';
 import AgendaScreen from './screens/AgendaScreen';
 import MemoryScreen from './screens/MemoryScreen';
 import ContractsScreen from './screens/ContractsScreen';
-import AuthScreen from './screens/AuthScreen';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 
 export type TabKey = 'talk' | 'docs' | 'agenda' | 'memory' | 'contracts';
@@ -25,9 +24,9 @@ function AppInner() {
     }
   };
 
-  if (!user) {
-    return <AuthScreen />;
-  }
+  // if (!user) {
+  //   return <AuthScreen />;
+  // }
 
   return (
     <Shell currentTab={currentTab} onTabChange={setCurrentTab}>

@@ -27,7 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const docSnap = await getDocFromServer(userRef);
           if (!docSnap.exists()) {
              await setDoc(userRef, {
-               email: firebaseUser.email,
+               email: firebaseUser.email || 'anonymous',
                createdAt: serverTimestamp(),
                updatedAt: serverTimestamp()
              });
@@ -40,6 +40,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } else {
+        import('firebase/auth').then(({ signInAnonymously }) => {
+           signInAnonymously(auth).catch(console.error);
+        });
         setUser(null);
       }
       setLoading(false);
