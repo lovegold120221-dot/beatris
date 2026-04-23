@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useLiveAPI, TalkContext as ContextType } from '../hooks/useLiveAudio';
 
 interface TalkContextValue {
@@ -9,16 +9,43 @@ interface TalkContextValue {
   transcript: { role: 'jo' | 'beatrice', text: string, time: string, image?: string }[];
   detectedLanguage: { input: string, output: string, confidence: string } | null;
   lastGeneratedImage: string | null;
+  activeContext: ContextType;
+  setActiveContext: (ctx: ContextType) => void;
 }
 
 const TalkContext = createContext<TalkContextValue | undefined>(undefined);
 
 export function TalkProvider({ children }: { children: ReactNode }) {
-  // We default to 'Work' but could potentially handle context switching here too
-  const talkAPI = useLiveAPI('Work');
+  const [activeContext, setActiveContextState] = useState<ContextType>(() => {
+    return (localStorage.getItem('beatrice_active_context') as ContextType) || 'Work';
+  });
+
+  const talkAPI = useLiveAPI(activeContext);
+
+  const setActiveContext = (ctx: ContextType) => {
+    if (ctx === activeContext) return;
+    
+    setActiveContextState(ctx);
+    localStorage.setItem('beatrice_active_context', ctx);
+    
+    // If currently connected, we force a reconnect to apply the new context
+    if (talkAPI.connected) {
+      talkAPI.disconnect();
+      // Short delay to allow proper cleanup before reconnecting
+      setTimeout(() => {
+        talkAPI.connect();
+      }, 500);
+    }
+  };
+
+  const value: TalkContextValue = {
+    ...talkAPI,
+    activeContext,
+    setActiveContext,
+  };
 
   return (
-    <TalkContext.Provider value={talkAPI}>
+    <TalkContext.Provider value={value}>
       {children}
     </TalkContext.Provider>
   );

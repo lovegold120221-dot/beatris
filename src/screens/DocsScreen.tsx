@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { UploadCloud, File, Trash2, CheckCircle2, Search, Loader2, ExternalLink, X, Scissors } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { UploadCloud, File, Trash2, CheckCircle2, Search, Loader2, ExternalLink, X, Scissors, RefreshCw } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { GoogleService } from '../services/googleService';
@@ -20,6 +20,7 @@ export default function DocsScreen() {
   const [googleDocs, setGoogleDocs] = useState<DocFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [activeDoc, setActiveDoc] = useState<DocFile | null>(null);
   const [selectedText, setSelectedText] = useState('');
   const [selectionPosition, setSelectionPosition] = useState({ top: 0, left: 0 });
@@ -37,6 +38,19 @@ Key Objectives:
 
 Risk Assessment:
 Supply chain delays for our hardware rollout may push the physical product launch to Q4. Mitigation involves pre-selling via the digital platform and utilizing virtual onboarding.`;
+
+  const loadGoogleFiles = useCallback(async () => {
+    if (!auth.currentUser) return;
+    setSyncing(true);
+    try {
+      const files = await GoogleService.listFiles(5);
+      setGoogleDocs(files);
+    } catch (err) {
+      console.error("Failed to load Google Drive files", err);
+    } finally {
+      setSyncing(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -58,18 +72,10 @@ Supply chain delays for our hardware rollout may push the physical product launc
     });
 
     // Load recent files from Google Drive
-    async function loadGoogleFiles() {
-      try {
-        const files = await GoogleService.listFiles(5);
-        setGoogleDocs(files);
-      } catch (err) {
-        console.error("Failed to load Google Drive files", err);
-      }
-    }
     loadGoogleFiles();
 
     return () => unsubscribe();
-  }, []);
+  }, [loadGoogleFiles]);
 
   const handleUploadClick = async () => {
     if (!auth.currentUser) return;
@@ -200,8 +206,17 @@ Supply chain delays for our hardware rollout may push the physical product launc
         {googleDocs.length > 0 && (
           <div className="flex flex-col gap-3">
              <h3 className="text-[10px] uppercase tracking-widest text-[#D4AF37] px-1 border-b border-[#D4AF37]/20 pb-2 flex items-center justify-between">
-               <span>Recent Google Drive</span>
-               <span className="opacity-60 text-[8px]">Live</span>
+               <div className="flex items-center gap-2">
+                 <span>Recent Google Drive</span>
+                 {syncing && <Loader2 size={10} className="animate-spin" />}
+               </div>
+               <button 
+                 onClick={loadGoogleFiles}
+                 disabled={syncing}
+                 className="hover:text-white transition-colors"
+               >
+                 <RefreshCw size={10} className={syncing ? 'animate-spin' : ''} />
+               </button>
              </h3>
              {googleDocs.map(doc => (
                <div key={doc.id} className="glass-panel rounded-xl p-4 flex flex-col gap-3 group relative overflow-hidden border-[#D4AF37]/10">

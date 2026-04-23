@@ -5,12 +5,26 @@ import { useTalk } from '../contexts/TalkContext';
 import { TalkContext } from '../hooks/useLiveAudio';
 
 export default function TalkScreen() {
-  const [activeContext, setActiveContext] = useState<TalkContext>(() => {
-    return (localStorage.getItem('beatrice_active_context') as TalkContext) || 'Work';
-  });
-  const { connect, disconnect, connected, speaking, detectedLanguage, transcript, lastGeneratedImage } = useTalk();
+  const { 
+    connect, 
+    disconnect, 
+    connected, 
+    speaking, 
+    detectedLanguage, 
+    transcript, 
+    lastGeneratedImage,
+    activeContext,
+    setActiveContext
+  } = useTalk();
   const [orbState, setOrbState] = useState<'idle' | 'listening' | 'speaking'>('idle');
   const [showMicPrompt, setShowMicPrompt] = useState(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [transcript]);
 
   useEffect(() => {
     if (!connected) {
@@ -45,20 +59,6 @@ export default function TalkScreen() {
     { id: 'Personal', icon: User, label: 'Personal', color: 'text-green-400' },
     { id: 'Travel', icon: Plane, label: 'Travel', color: 'text-orange-400' },
   ];
-
-  const handleContextChange = (newContext: TalkContext) => {
-    if (newContext === activeContext) return;
-    setActiveContext(newContext);
-    localStorage.setItem('beatrice_active_context', newContext);
-    // If currently connected, we force a reconnect or let the user do it manually
-    if (connected) {
-      disconnect();
-      // Add a small delay then reconnect with new context
-      setTimeout(() => {
-        connect();
-      }, 500);
-    }
-  };
 
   return (
     <div className="flex flex-col h-full relative">
@@ -107,7 +107,7 @@ export default function TalkScreen() {
               return (
                 <button
                   key={ctx.id}
-                  onClick={() => handleContextChange(ctx.id)}
+                  onClick={() => setActiveContext(ctx.id)}
                   className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-[10px] uppercase tracking-wider font-semibold transition-all duration-300 ${
                     isActive ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20 relative' : 'text-white/50 hover:text-white/80 hover:bg-white/5'
                   }`}
@@ -206,70 +206,86 @@ export default function TalkScreen() {
             </motion.div>
           </motion.div>
 
-          {/* Live Transcription Area */}
-          <motion.div layout className="px-6 mb-4 flex-1 flex flex-col justify-end min-h-[4rem] relative z-10 pointer-events-none">
-            <div className="flex flex-col gap-2 max-h-36 overflow-y-auto hide-scrollbar mask-image-fade-top pointer-events-auto">
-              <AnimatePresence initial={false}>
-                {transcript.map((t, i) => (
+          {/* Live Transcription Area (Moved to bottom panel) */}
+          <div className="flex-1 flex flex-col justify-center items-center relative z-10 pointer-events-none">
+            {/* Keeping this space flexible for the orb to move */}
+          </div>
+        </div>
+
+        {/* Dynamic Transcription Monitor (Repurposed from Context Panel) */}
+        <motion.div layout className="mb-6 mx-6 bg-black/60 backdrop-blur-2xl border border-[#D4AF37]/30 rounded-2xl p-5 relative overflow-hidden shrink-0 shadow-2xl">
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#D4AF37]/5 rounded-full blur-3xl"></div>
+          
+          <div className="flex justify-between items-center border-b border-white/10 pb-3 mb-4 relative z-10">
+            <div className="flex items-center gap-2">
+              <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500 animate-pulse' : 'bg-white/20'}`}></div>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-white/50 font-bold">
+                Live Transcription
+              </span>
+            </div>
+            {connected && (
+              <span className="text-[9px] font-mono text-[#D4AF37] px-2 py-0.5 rounded bg-[#D4AF37]/10 flex items-center gap-1.5 leading-none">
+                <Waves size={10} /> STREAMING
+              </span>
+            )}
+          </div>
+
+          <div ref={scrollRef} className="space-y-4 max-h-32 overflow-y-auto hide-scrollbar relative z-10 scroll-smooth">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {transcript.length === 0 ? (
+                <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  className="flex items-center justify-center py-4"
+                >
+                  <span className="text-[10px] text-white/20 uppercase tracking-widest italic">Waiting for connection...</span>
+                </motion.div>
+              ) : (
+                transcript.map((t, i) => (
                   <motion.div 
                     layout
                     key={`${i}-${t.time}`}
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className={`flex flex-col ${t.role === 'beatrice' ? 'items-start' : 'items-end'}`}
+                    initial={{ opacity: 0, x: t.role === 'jo' ? 10 : -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex flex-col gap-1"
                   >
-                    <span className={`text-[9px] uppercase tracking-wider mb-0.5 ${t.role === 'beatrice' ? 'text-[#D4AF37]' : 'text-blue-400'}`}>
-                      {t.role === 'beatrice' ? 'Beatrice' : 'You'}
-                    </span>
-                    <div className={`text-xs px-3 py-2 max-w-[85%] shadow-sm ${
-                      t.role === 'beatrice' 
-                        ? 'bg-[#D4AF37]/10 text-white/90 rounded-2xl rounded-tl-sm border border-[#D4AF37]/20 backdrop-blur-sm' 
-                        : 'bg-blue-500/10 text-white/90 rounded-2xl rounded-tr-sm border border-blue-500/20 backdrop-blur-sm'
-                    }`}>
-                      {t.text}
-                      {t.image && (
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="mt-2 rounded-lg overflow-hidden border border-[#D4AF37]/30 shadow-lg"
-                        >
-                          <img src={t.image} alt="Generated" className="w-full h-auto object-cover" referrerPolicy="no-referrer" />
-                        </motion.div>
-                      )}
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[8px] uppercase tracking-widest font-bold ${t.role === 'beatrice' ? 'text-[#D4AF37]' : 'text-blue-400'}`}>
+                        {t.role === 'beatrice' ? 'Beatrice Agent' : 'User (Maneer Jo)'}
+                      </span>
+                      <span className="text-[8px] text-white/20 font-mono">{t.time}</span>
                     </div>
+                    <p className={`text-xs leading-relaxed font-serif ${t.role === 'jo' ? 'text-white/80' : 'text-white'}`}>
+                      {t.text}
+                      {i === transcript.length - 1 && connected && (
+                        <motion.span 
+                          animate={{ opacity: [1, 0, 1] }} 
+                          transition={{ repeat: Infinity, duration: 0.8 }}
+                          className="inline-block w-1.5 h-3 ml-1 bg-[#D4AF37] align-middle"
+                        />
+                      )}
+                    </p>
+                    {t.image && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="mt-2 rounded-xl border border-white/10 overflow-hidden shadow-lg"
+                      >
+                         <img src={t.image} alt="Generative Output" className="w-full h-auto" referrerPolicy="no-referrer" />
+                      </motion.div>
+                    )}
                   </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Enhanced Context Panel */}
-        <motion.div layout className="mb-6 mx-6 bg-white/5 backdrop-blur-xl border border-[#D4AF37]/20 rounded-2xl p-4 space-y-3 relative overflow-hidden shrink-0">
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#D4AF37]/5 rounded-full blur-2xl"></div>
-          <div className="flex justify-between items-center border-b border-white/5 pb-2 relative z-10">
-            <span className="text-[10px] uppercase tracking-wider text-white/50 font-bold flex items-center gap-2">
-              <Sparkles size={10} className="text-[#D4AF37]" /> Connected Context
-            </span>
-            <span className="text-[10px] text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-0.5 rounded-full">Active</span>
+                ))
+              )}
+            </AnimatePresence>
+            <div className="h-2" /> {/* Buffer for scrolling */}
           </div>
-          <div className="grid grid-cols-2 gap-2 relative z-10">
-            <div className="bg-black/40 p-2 rounded-lg border border-white/5 flex items-center gap-2 group hover:border-[#D4AF37]/40 transition-colors">
-              <div className="w-2 h-2 rounded-full bg-blue-400 group-hover:shadow-[0_0_8px_#60a5fa] transition-shadow"></div>
-              <span className="text-[10px] font-medium text-white/80">Agenda 11:00</span>
-            </div>
-            <div className="bg-black/40 p-2 rounded-lg border border-white/5 flex items-center gap-2 group hover:border-[#D4AF37]/40 transition-colors">
-              <div className="w-2 h-2 rounded-full bg-orange-400 group-hover:shadow-[0_0_8px_#fb923c] transition-shadow"></div>
-              <span className="text-[10px] font-medium text-white/80">NDA_Draft.pdf</span>
-            </div>
-            <div className="bg-black/40 p-2 rounded-lg border border-white/5 flex items-center gap-2 group hover:border-[#D4AF37]/40 transition-colors">
-              <div className="w-2 h-2 rounded-full bg-green-400 group-hover:shadow-[0_0_8px_#4ade80] transition-shadow"></div>
-              <span className="text-[10px] font-medium text-white/80">Inbox (2)</span>
-            </div>
-            <div className="bg-black/40 p-2 rounded-lg border border-white/5 flex items-center gap-2 group hover:border-[#D4AF37]/40 transition-colors">
-              <div className="w-2 h-2 rounded-full bg-purple-400 group-hover:shadow-[0_0_8px_#c084fc] transition-shadow"></div>
-              <span className="text-[10px] font-medium text-white/80">WhatsApp</span>
-            </div>
+
+          {/* Technical Accents */}
+          <div className="absolute bottom-2 right-4 flex gap-1 opacity-20">
+            <div className="w-0.5 h-0.5 rounded-full bg-white"></div>
+            <div className="w-0.5 h-0.5 rounded-full bg-white"></div>
+            <div className="w-0.5 h-0.5 rounded-full bg-white"></div>
           </div>
         </motion.div>
 

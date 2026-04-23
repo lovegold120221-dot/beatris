@@ -269,27 +269,46 @@ When you speak, also call the report_language function to report the detected in
             // Handle Transcriptions
             if (message.serverContent?.modelTurn?.parts) {
                // Sometimes output transcription comes inside the model parts if it's text
-               for(const p of message.serverContent.modelTurn.parts) {
-                 if (p.text) {
-                   setTranscript((prev) => {
-                     const text = p.text || '';
-                     if (!text.trim()) return prev;
-                     return [...prev, { role: 'beatrice', text: text, time: new Date().toLocaleTimeString() }].slice(-5);
-                   });
-                 }
+               const textParts = message.serverContent.modelTurn.parts.map(p => p.text).filter(Boolean).join('');
+               if (textParts) {
+                 setTranscript((prev) => {
+                   const last = prev[prev.length - 1];
+                   if (last && last.role === 'beatrice' && !last.image) {
+                     const updated = [...prev];
+                     updated[updated.length - 1] = { ...last, text: last.text + textParts };
+                     return updated;
+                   }
+                   return [...prev, { role: 'beatrice', text: textParts, time: new Date().toLocaleTimeString() }].slice(-10);
+                 });
                }
             }
 
             if (message.serverContent?.inputTranscription?.text) {
                const text = message.serverContent.inputTranscription.text;
                if (text.trim()) {
-                 setTranscript((prev) => [...prev, { role: 'jo', text, time: new Date().toLocaleTimeString() }].slice(-5));
+                 setTranscript((prev) => {
+                   const last = prev[prev.length - 1];
+                   if (last && last.role === 'jo') {
+                     const updated = [...prev];
+                     updated[updated.length - 1] = { ...last, text };
+                     return updated;
+                   }
+                   return [...prev, { role: 'jo', text, time: new Date().toLocaleTimeString() }].slice(-10);
+                 });
                }
             }
             if (message.serverContent?.outputTranscription?.text) {
                const text = message.serverContent.outputTranscription.text;
                if (text.trim()) {
-                 setTranscript((prev) => [...prev, { role: 'beatrice', text, time: new Date().toLocaleTimeString() }].slice(-5));
+                 setTranscript((prev) => {
+                   const last = prev[prev.length - 1];
+                   if (last && last.role === 'beatrice' && !last.image) {
+                     const updated = [...prev];
+                     updated[updated.length - 1] = { ...last, text };
+                     return updated;
+                   }
+                   return [...prev, { role: 'beatrice', text, time: new Date().toLocaleTimeString() }].slice(-10);
+                 });
                }
             }
 
