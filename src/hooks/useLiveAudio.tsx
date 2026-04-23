@@ -62,6 +62,37 @@ export function useLiveAPI(contextString: TalkContext = 'Work') {
   const [speaking, setSpeaking] = useState(false);
   const [detectedLanguage, setDetectedLanguage] = useState<{input: string, output: string, confidence: string} | null>(null);
   const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(null);
+  const toolStartTimeRef = useRef<Record<string, number>>({});
+
+  const updateToolStatus = (
+    toolName: string, 
+    status: 'success' | 'error', 
+    text: string, 
+    extra?: Partial<TranscriptItem>
+  ) => {
+    setTranscript(prev => {
+      const updated = [...prev];
+      let toolIdx = -1;
+      for (let i = updated.length - 1; i >= 0; i--) {
+        if (updated[i].toolName === toolName && updated[i].status === 'pending') {
+          toolIdx = i;
+          break;
+        }
+      }
+      
+      if (toolIdx !== -1) {
+        const startTime = toolStartTimeRef.current[toolName] || Date.now();
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        updated[toolIdx] = { 
+          ...updated[toolIdx], 
+          status, 
+          text: `${text} (${duration}s)`,
+          ...extra 
+        };
+      }
+      return updated.slice(-10);
+    });
+  };
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const nextTimeRef = useRef<number>(0);
@@ -340,9 +371,10 @@ When you speak, also call the report_language function to report the detected in
                   
                   // Add tool call notification to transcript
                   if (call.name !== 'report_language') {
+                    toolStartTimeRef.current[call.name] = Date.now();
                     setTranscript(prev => [...prev, { 
                       role: 'system', 
-                      text: `Accessing ${call.name.replace(/_/g, ' ')}...`, 
+                      text: `Initiating ${call.name.replace(/_/g, ' ')}...`, 
                       time: new Date().toLocaleTimeString(),
                       status: 'pending',
                       toolName: call.name
@@ -359,13 +391,37 @@ When you speak, also call the report_language function to report the detected in
                         confidence: args.confidence
                       });
                     } else if (call.name === 'list_recent_emails') {
-                      result = await GoogleService.listEmails(5);
+                      const emails = await GoogleService.listEmails(5);
+                      result = emails;
+                      const count = emails.length;
+                      const latestSender = emails[0]?.from.split('<')[0].trim() || 'Unknown';
+                      updateToolStatus(
+                        'list_recent_emails', 
+                        'success', 
+                        `Retrieved ${count} emails. Latest from: ${latestSender}`
+                      );
                     } else if (call.name === 'list_calendar_events') {
-                      result = await GoogleService.listEvents(5);
+                      const events = await GoogleService.listEvents(5);
+                      result = events;
+                      const count = events.length;
+                      const next = events[0];
+                      const nextTime = next?.start?.dateTime ? new Date(next.start.dateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+                      updateToolStatus(
+                        'list_calendar_events', 
+                        'success', 
+                        `Found ${count} events. Next: "${next?.summary || 'N/A'}" ${nextTime ? `at ${nextTime}` : ''}`
+                      );
                     } else if (call.name === 'list_drive_files') {
-                      result = await GoogleService.listFiles(5);
+                      const files = await GoogleService.listFiles(5);
+                      result = files;
+                      const count = files.length;
+                      const firstFile = files[0];
+                      updateToolStatus(
+                        'list_drive_files', 
+                        'success', 
+                        `Sync'd ${count} files. Featured: "${firstFile?.name || 'N/A'}"`
+                      );
                     } else if (call.name === 'save_selected_snippet') {
-                      // Attempt to retrieve current window selection
                       const selection = window.getSelection();
                       const selectedText = selection?.toString().trim();
                       
@@ -380,89 +436,54 @@ When you speak, also call the report_language function to report the detected in
                           updatedAt: serverTimestamp()
                         });
                         
-                        setTranscript(prev => {
-                          const updated = [...prev];
-                          const toolIdx = -1; // reuse existing pattern if needed, but here we just update
-                          return [...prev, { 
-                            role: 'system', 
-                            text: `Saved snippet: "${selectedText.substring(0, 30)}..."`, 
-                            time: new Date().toLocaleTimeString(),
-                            status: 'success'
-                          }].slice(-10);
-                        });
+                        updateToolStatus(
+                          'save_selected_snippet', 
+                          'success', 
+                          `Snippet saved to memory: "${selectedText.substring(0, 25)}..."`
+                        );
                         
                         selection?.removeAllRanges();
                         result = { success: true, saved_text: selectedText };
                       } else {
-                        result = { success: false, error: "No text selected in the browser UI." };
+                        throw new Error("No active text selection found");
                       }
                     } else if (call.name === 'generate_image') {
                       const args = call.args as any;
                       const imageUrl = await ImageService.generateImage(args.prompt);
                       if (imageUrl) {
                         setLastGeneratedImage(imageUrl);
-                        setTranscript(prev => {
-                          const updated = [...prev];
-                          // Find the pending tool call and update it (searching from end)
-                          let toolIdx = -1;
-                          for (let i = updated.length - 1; i >= 0; i--) {
-                            if (updated[i].toolName === 'generate_image' && updated[i].status === 'pending') {
-                              toolIdx = i;
-                              break;
-                            }
-                          }
-                          if (toolIdx !== -1) {
-                            updated[toolIdx] = { 
-                              ...updated[toolIdx], 
-                              status: 'success', 
-                              text: `Image generated: "${args.prompt}"`,
-                              image: imageUrl
-                            };
-                          }
-                          return updated.slice(-10);
-                        });
+                        updateToolStatus(
+                          'generate_image', 
+                          'success', 
+                          `Visualized: "${args.prompt.substring(0, 30)}..."`,
+                          { image: imageUrl }
+                        );
                         result = { success: true, image_url: imageUrl };
                       } else {
-                        throw new Error("Failed to generate image.");
+                        throw new Error("Generative engine failure");
                       }
                     }
 
-                    // For other tools, update status to success
-                    if (call.name !== 'report_language' && call.name !== 'generate_image') {
-                      setTranscript(prev => {
-                        const updated = [...prev];
-                        let toolIdx = -1;
-                        for (let i = updated.length - 1; i >= 0; i--) {
-                          if (updated[i].toolName === call.name && updated[i].status === 'pending') {
-                            toolIdx = i;
-                            break;
-                          }
-                        }
-                        if (toolIdx !== -1) {
-                          updated[toolIdx] = { ...updated[toolIdx], status: 'success', text: `Successfully accessed ${call.name.replace(/_/g, ' ')}` };
-                        }
-                        return updated.slice(-10);
-                      });
+                    // Handle success for any other tools
+                    if (!['report_language', 'list_recent_emails', 'list_calendar_events', 'list_drive_files', 'save_selected_snippet', 'generate_image'].includes(call.name)) {
+                      updateToolStatus(call.name, 'success', `Operation ${call.name} complete`);
                     }
                   } catch (err) {
                     console.error(`Tool call error (${call.name}):`, err);
                     result = { error: String(err) };
                     
                     if (call.name !== 'report_language') {
-                      setTranscript(prev => {
-                        const updated = [...prev];
-                        let toolIdx = -1;
-                        for (let i = updated.length - 1; i >= 0; i--) {
-                          if (updated[i].toolName === call.name && updated[i].status === 'pending') {
-                            toolIdx = i;
-                            break;
-                          }
-                        }
-                        if (toolIdx !== -1) {
-                          updated[toolIdx] = { ...updated[toolIdx], status: 'error', text: `Failed to access ${call.name.replace(/_/g, ' ')}` };
-                        }
-                        return updated.slice(-10);
-                      });
+                      let msg = String(err).replace('Error: ', '');
+                      if (msg === "DRIVE_API_DISABLED") {
+                        msg = "Google Drive API is disabled. Please enable it in the console.";
+                      } else if (msg === "GMAIL_API_DISABLED") {
+                        msg = "Gmail API is disabled. Please enable it in the console.";
+                      } else if (msg === "CALENDAR_API_DISABLED") {
+                        msg = "Calendar API is disabled. Please enable it in the console.";
+                      } else if (msg === "GOOGLE_API_DISABLED") {
+                        msg = "A required Google API is disabled. Please enable it in the console.";
+                      }
+                      updateToolStatus(call.name, 'error', `Failed: ${msg}`);
                     }
                   }
                   

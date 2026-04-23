@@ -28,7 +28,16 @@ export class GoogleService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(`Google API Error: ${response.status} ${JSON.stringify(errorData)}`);
+      const message = errorData.error?.message || response.statusText;
+      
+      if (message.includes("is disabled") || message.includes("not been used")) {
+        if (url.includes("gmail.googleapis.com")) throw new Error("GMAIL_API_DISABLED");
+        if (url.includes("calendar-json.googleapis.com") || url.includes("calendar.googleapis.com")) throw new Error("CALENDAR_API_DISABLED");
+        if (url.includes("drive.googleapis.com")) throw new Error("DRIVE_API_DISABLED");
+        throw new Error("GOOGLE_API_DISABLED");
+      }
+      
+      throw new Error(`Google API Error: ${response.status} ${message}`);
     }
 
     return response.json();

@@ -21,6 +21,7 @@ export default function DocsScreen() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [activeDoc, setActiveDoc] = useState<DocFile | null>(null);
   const [selectedText, setSelectedText] = useState('');
   const [selectionPosition, setSelectionPosition] = useState({ top: 0, left: 0 });
@@ -42,11 +43,17 @@ Supply chain delays for our hardware rollout may push the physical product launc
   const loadGoogleFiles = useCallback(async () => {
     if (!auth.currentUser) return;
     setSyncing(true);
+    setSyncError(null);
     try {
       const files = await GoogleService.listFiles(5);
       setGoogleDocs(files);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to load Google Drive files", err);
+      if (err.message === "DRIVE_API_DISABLED") {
+        setSyncError("Google Drive API is disabled. Please enable it in the console.");
+      } else {
+        setSyncError("Failed to load files.");
+      }
     } finally {
       setSyncing(false);
     }
@@ -209,6 +216,7 @@ Supply chain delays for our hardware rollout may push the physical product launc
                <div className="flex items-center gap-2">
                  <span>Recent Google Drive</span>
                  {syncing && <Loader2 size={10} className="animate-spin" />}
+                 {syncError && <span className="text-red-400 normal-case font-light ml-2">{syncError}</span>}
                </div>
                <button 
                  onClick={loadGoogleFiles}
