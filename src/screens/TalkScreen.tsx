@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mic, Waves, Loader2, Sparkles, Files, Briefcase, Globe, Plane, User, LayoutGrid } from 'lucide-react';
-import { useLiveAPI, TalkContext } from '../hooks/useLiveAudio';
+import { useTalk } from '../contexts/TalkContext';
+import { TalkContext } from '../hooks/useLiveAudio';
 
 export default function TalkScreen() {
   const [activeContext, setActiveContext] = useState<TalkContext>(() => {
     return (localStorage.getItem('beatrice_active_context') as TalkContext) || 'Work';
   });
-  const { connect, disconnect, connected, speaking, detectedLanguage, transcript } = useLiveAPI(activeContext);
+  const { connect, disconnect, connected, speaking, detectedLanguage, transcript, lastGeneratedImage } = useTalk();
   const [orbState, setOrbState] = useState<'idle' | 'listening' | 'speaking'>('idle');
   const [showMicPrompt, setShowMicPrompt] = useState(false);
 
@@ -226,6 +227,15 @@ export default function TalkScreen() {
                         : 'bg-blue-500/10 text-white/90 rounded-2xl rounded-tr-sm border border-blue-500/20 backdrop-blur-sm'
                     }`}>
                       {t.text}
+                      {t.image && (
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="mt-2 rounded-lg overflow-hidden border border-[#D4AF37]/30 shadow-lg"
+                        >
+                          <img src={t.image} alt="Generated" className="w-full h-auto object-cover" referrerPolicy="no-referrer" />
+                        </motion.div>
+                      )}
                     </div>
                   </motion.div>
                 ))}

@@ -119,7 +119,8 @@ Supply chain delays for our hardware rollout may push the physical product launc
         content: selectedText,
         type: 'snippet',
         sourceUrl: activeDoc?.filename || activeDoc?.name || 'Document',
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
       setSelectedText('');
       window.getSelection()?.removeAllRanges();

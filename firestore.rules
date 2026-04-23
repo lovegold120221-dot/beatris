@@ -40,17 +40,19 @@ service cloud.firestore {
 
     function isValidMemoryCreate(data, userId) {
       return data.keys().hasAll(['userId', 'content', 'type', 'createdAt', 'updatedAt'])
-        && data.keys().size() == 5
+        && data.keys().size() <= 6
         && data.userId == userId
         && data.content is string && data.content.size() <= 2000
-        && data.type is string && data.type in ['preference', 'fact', 'summary', 'email', 'whatsapp']
+        && data.type is string && data.type in ['preference', 'fact', 'summary', 'email', 'whatsapp', 'snippet']
+        && ( !('sourceUrl' in data) || (data.sourceUrl is string && data.sourceUrl.size() <= 500) )
         && data.createdAt == request.time
         && data.updatedAt == request.time;
     }
     
     function isValidMemoryUpdate(data, userId) {
       return data.content is string && data.content.size() <= 2000
-        && data.type is string && data.type in ['preference', 'fact', 'summary', 'email', 'whatsapp']
+        && data.type is string && data.type in ['preference', 'fact', 'summary', 'email', 'whatsapp', 'snippet']
+        && ( !('sourceUrl' in data) || (data.sourceUrl is string && data.sourceUrl.size() <= 500) )
         && data.updatedAt == request.time
         && data.userId == existing().userId
         && data.createdAt == existing().createdAt;
@@ -92,7 +94,7 @@ service cloud.firestore {
       // Subcollections
       match /memories/{memoryId} {
         allow get: if isOwner(userId) && isValidId(memoryId);
-        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+        allow list: if isOwner(userId);
 
         allow create: if isValidId(memoryId)
                       && isOwner(userId)
@@ -101,14 +103,14 @@ service cloud.firestore {
         allow update: if isValidId(memoryId)
                       && isOwner(userId)
                       && isValidMemoryUpdate(incoming(), userId)
-                      && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'type', 'updatedAt']);
+                      && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'type', 'sourceUrl', 'updatedAt']);
                       
         allow delete: if isValidId(memoryId) && isOwner(userId);
       }
 
       match /files/{fileId} {
         allow get: if isOwner(userId) && isValidId(fileId);
-        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+        allow list: if isOwner(userId);
 
         allow create: if isValidId(fileId)
                       && isOwner(userId)

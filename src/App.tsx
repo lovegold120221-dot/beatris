@@ -7,6 +7,7 @@ import MemoryScreen from './screens/MemoryScreen';
 import ContractsScreen from './screens/ContractsScreen';
 import AuthScreen from './screens/AuthScreen';
 import { AuthProvider, useAuth } from './components/AuthProvider';
+import { TalkProvider } from './contexts/TalkContext';
 
 export type TabKey = 'talk' | 'docs' | 'agenda' | 'memory' | 'contracts';
 
@@ -30,9 +31,11 @@ function AppInner() {
   }
 
   return (
-    <Shell currentTab={currentTab} onTabChange={setCurrentTab}>
-      {renderScreen()}
-    </Shell>
+    <TalkProvider>
+      <Shell currentTab={currentTab} onTabChange={setCurrentTab}>
+        {renderScreen()}
+      </Shell>
+    </TalkProvider>
   );
 }
 

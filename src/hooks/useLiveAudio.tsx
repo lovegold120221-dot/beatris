@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 import { GoogleService } from '../services/googleService';
+import { ImageService } from '../services/imageService';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -46,9 +47,10 @@ export type TalkContext = 'Work' | 'Personal' | 'Travel';
 
 export function useLiveAPI(contextString: TalkContext = 'Work') {
   const [connected, setConnected] = useState(false);
-  const [transcript, setTranscript] = useState<{ role: 'jo' | 'beatrice', text: string, time: string }[]>([]);
+  const [transcript, setTranscript] = useState<{ role: 'jo' | 'beatrice', text: string, time: string, image?: string }[]>([]);
   const [speaking, setSpeaking] = useState(false);
   const [detectedLanguage, setDetectedLanguage] = useState<{input: string, output: string, confidence: string} | null>(null);
+  const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(null);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const nextTimeRef = useRef<number>(0);
@@ -177,6 +179,7 @@ Current Interaction Context: [**${contextString}**]. Please tailor your response
 Start by speaking English. As he speaks, automatically adapt to his language.
 Maintain an elegant and highly competent chief of staff persona. Answer concisely.
 You have tools to access Jo's real Gmail, Calendar, and Drive. use them proactively to help him.
+If he asks for an image, or you think a visualization would help, use the generate_image tool.
 When you speak, also call the report_language function to report the detected input language, your output language, and your confidence level about the input language.`;
 
       sessionPromiseRef.current = ai.live.connect({
@@ -189,11 +192,6 @@ When you speak, also call the report_language function to report the detected in
           systemInstruction: sysInstruct,
           inputAudioTranscription: {},
           outputAudioTranscription: {},
-          toolConfig: {
-            functionCallingConfig: {
-              mode: 'AUTO'
-            }
-          },
           tools: [{
             functionDeclarations: [
               {
@@ -223,6 +221,17 @@ When you speak, also call the report_language function to report the detected in
                 name: 'list_drive_files',
                 description: 'List recent files from Google Drive.',
                 parameters: { type: Type.OBJECT, properties: {} }
+              },
+              {
+                name: 'generate_image',
+                description: 'Generate an image based on a descriptive prompt.',
+                parameters: {
+                  type: Type.OBJECT,
+                  properties: {
+                    prompt: { type: Type.STRING, description: 'The detailed prompt for image generation.' }
+                  },
+                  required: ['prompt']
+                }
               }
             ]
           }]
@@ -236,10 +245,12 @@ When you speak, also call the report_language function to report the detected in
                if (sessionPromiseRef.current) {
                  const base64 = arrayBufferToBase64(e.data);
                  sessionPromiseRef.current.then((session: any) => {
-                   session.sendRealtimeInput([{
-                     mimeType: 'audio/pcm;rate=16000',
-                     data: base64
-                   }]);
+                   session.sendRealtimeInput({
+                     audio: {
+                       mimeType: 'audio/pcm;rate=16000',
+                       data: base64
+                     }
+                   });
                  }).catch(console.error);
                }
              };
@@ -305,6 +316,21 @@ When you speak, also call the report_language function to report the detected in
                       result = await GoogleService.listEvents(5);
                     } else if (call.name === 'list_drive_files') {
                       result = await GoogleService.listFiles(5);
+                    } else if (call.name === 'generate_image') {
+                      const args = call.args as any;
+                      const imageUrl = await ImageService.generateImage(args.prompt);
+                      if (imageUrl) {
+                        setLastGeneratedImage(imageUrl);
+                        setTranscript(prev => [...prev, { 
+                          role: 'beatrice', 
+                          text: `Generated image: ${args.prompt}`, 
+                          time: new Date().toLocaleTimeString(),
+                          image: imageUrl
+                        }].slice(-5));
+                        result = { success: true, message: "Image generated and displayed to Jo." };
+                      } else {
+                        result = { success: false, error: "Failed to generate image." };
+                      }
                     }
                   } catch (err) {
                     console.error(`Tool call error (${call.name}):`, err);
@@ -364,5 +390,5 @@ When you speak, also call the report_language function to report the detected in
     }
   };
 
-  return { connect, disconnect, connected, speaking, transcript, detectedLanguage };
+  return { connect, disconnect, connected, speaking, transcript, detectedLanguage, lastGeneratedImage };
 }
