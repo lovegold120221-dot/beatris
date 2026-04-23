@@ -38,8 +38,6 @@ export default function TopBar() {
     }
   };
 
-  const isAnon = !auth.currentUser || auth.currentUser.isAnonymous;
-
   return (
     <div className="pt-8 px-6 pb-4 flex justify-between items-center bg-gradient-to-b from-black to-transparent z-10 w-full relative">
       <div className="flex flex-col">
@@ -125,26 +123,16 @@ export default function TopBar() {
               >
                 <div className="px-3 py-2 border-b border-white/5 mb-1">
                   <p className="text-[10px] text-white/40 uppercase tracking-widest truncate">
-                    {isAnon ? 'Anonymous Mode' : auth.currentUser?.email}
+                    {auth.currentUser?.email}
                   </p>
                 </div>
-                {isAnon ? (
-                  <button 
-                    onClick={handleConnectGoogle}
-                    className="flex items-center gap-3 px-3 py-2 text-xs text-[#D4AF37] hover:bg-[#D4AF37]/10 rounded-xl transition-colors"
-                  >
-                    <User size={14} />
-                    <span>Connect Google</span>
-                  </button>
-                ) : (
-                  <button 
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 px-3 py-2 text-xs text-rose-400 hover:bg-rose-400/10 rounded-xl transition-colors"
-                  >
-                    <LogOut size={14} />
-                    <span>Logout</span>
-                  </button>
-                )}
+                <button 
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 px-3 py-2 text-xs text-rose-400 hover:bg-rose-400/10 rounded-xl transition-colors"
+                >
+                  <LogOut size={14} />
+                  <span>Logout</span>
+                </button>
               </motion.div>
             )}
           </AnimatePresence>

@@ -77,10 +77,14 @@ export function useLiveAPI(contextString: TalkContext = 'Work') {
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
-    const int16Array = new Int16Array(bytes.buffer);
-    const float32Array = new Float32Array(int16Array.length);
-    for (let i = 0; i < int16Array.length; i++) {
-      float32Array[i] = int16Array[i] / 0x8000;
+    
+    // Ensure the byte length is even for 16-bit PCM
+    const view = new DataView(bytes.buffer);
+    const float32Array = new Float32Array(Math.floor(bytes.length / 2));
+    for (let i = 0; i < float32Array.length; i++) {
+      // Live API returns Little-Endian PCM 16-bit
+      const int16 = view.getInt16(i * 2, true); 
+      float32Array[i] = int16 / 0x8000;
     }
 
     const audioBuffer = ctx.createBuffer(1, float32Array.length, 24000);
@@ -176,7 +180,7 @@ You have tools to access Jo's real Gmail, Calendar, and Drive. use them proactiv
 When you speak, also call the report_language function to report the detected input language, your output language, and your confidence level about the input language.`;
 
       sessionPromiseRef.current = ai.live.connect({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-3.1-flash-live-preview",
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
@@ -185,6 +189,11 @@ When you speak, also call the report_language function to report the detected in
           systemInstruction: sysInstruct,
           inputAudioTranscription: {},
           outputAudioTranscription: {},
+          toolConfig: {
+            functionCallingConfig: {
+              mode: 'AUTO'
+            }
+          },
           tools: [{
             functionDeclarations: [
               {
@@ -296,11 +305,10 @@ When you speak, also call the report_language function to report the detected in
       
       // Kick off the conversation
       sessionPromiseRef.current.then((session: any) => {
-         // Send an empty message that just triggers the "Greeting" instruction
-         // Wait a moment for network
          setTimeout(() => {
-           session.sendRealtimeInput({
-             text: "I have just connected. Please greet me as instructed."
+           session.sendClientContent({
+             turns: [{ role: "user", parts: [{ text: "I have just connected. Please greet me as instructed." }] }],
+             turnComplete: true
            });
          }, 500);
       });

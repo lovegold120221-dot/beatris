@@ -40,9 +40,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } else {
-        import('firebase/auth').then(({ signInAnonymously }) => {
-           signInAnonymously(auth).catch(console.error);
-        });
         setUser(null);
       }
       setLoading(false);
