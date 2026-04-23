@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
 import { GoogleService } from '../services/googleService';
 import { ImageService } from '../services/imageService';
 
@@ -189,6 +191,7 @@ Start by speaking English. As he speaks, automatically adapt to his language.
 Maintain an elegant and highly competent chief of staff persona. Answer concisely.
 You have tools to access Jo's real Gmail, Calendar, and Drive. use them proactively to help him.
 If he asks for an image, or you think a visualization would help, use the generate_image tool.
+If he asks you to "save this" or "capture this snippet", or mentions saving his selection, use the save_selected_snippet tool.
 When you speak, also call the report_language function to report the detected input language, your output language, and your confidence level about the input language.`;
 
       sessionPromiseRef.current = ai.live.connect({
@@ -241,6 +244,11 @@ When you speak, also call the report_language function to report the detected in
                   },
                   required: ['prompt']
                 }
+              },
+              {
+                name: 'save_selected_snippet',
+                description: 'Save the text Jo has currently selected in the document viewer as a memory snippet.',
+                parameters: { type: Type.OBJECT, properties: {} }
               }
             ]
           }]
@@ -356,6 +364,38 @@ When you speak, also call the report_language function to report the detected in
                       result = await GoogleService.listEvents(5);
                     } else if (call.name === 'list_drive_files') {
                       result = await GoogleService.listFiles(5);
+                    } else if (call.name === 'save_selected_snippet') {
+                      // Attempt to retrieve current window selection
+                      const selection = window.getSelection();
+                      const selectedText = selection?.toString().trim();
+                      
+                      if (selectedText && auth.currentUser) {
+                        const memoriesRef = collection(db, 'users', auth.currentUser.uid, 'memories');
+                        await addDoc(memoriesRef, {
+                          userId: auth.currentUser.uid,
+                          content: selectedText,
+                          type: 'snippet',
+                          sourceUrl: 'Voice Capture',
+                          createdAt: serverTimestamp(),
+                          updatedAt: serverTimestamp()
+                        });
+                        
+                        setTranscript(prev => {
+                          const updated = [...prev];
+                          const toolIdx = -1; // reuse existing pattern if needed, but here we just update
+                          return [...prev, { 
+                            role: 'system', 
+                            text: `Saved snippet: "${selectedText.substring(0, 30)}..."`, 
+                            time: new Date().toLocaleTimeString(),
+                            status: 'success'
+                          }].slice(-10);
+                        });
+                        
+                        selection?.removeAllRanges();
+                        result = { success: true, saved_text: selectedText };
+                      } else {
+                        result = { success: false, error: "No text selected in the browser UI." };
+                      }
                     } else if (call.name === 'generate_image') {
                       const args = call.args as any;
                       const imageUrl = await ImageService.generateImage(args.prompt);
